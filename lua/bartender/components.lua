@@ -1,22 +1,45 @@
-local utils = require("tinbar.utils")
+local utils = require("bartender.utils")
 
 local M = {}
-
-M.should_truncate = function(_, trunc_width)
-  local current_width = vim.api.nvim_win_get_width(0)
-  return current_width < trunc_width
-end
 
 -- Shroom icon
 M.get_shroom = function()
   return {
     text = "ﳞ",
-    length = vim.fn.strchars("ﳞ"),
     highlight = {
-      name = "WinBarShroom",
+      name = "Shroom",
       attributes = {
         fg = utils.get_hl("Function", "foreground"),
       },
+    },
+  }
+end
+
+M.get_lsp_symbol = function()
+  return {
+    text = #vim.lsp.get_active_clients({bufnr = 0}) == 0 and "" or  " ",
+    highlight = {
+      name = "Special",
+    },
+  }
+end
+
+M.get_lsp_clients = function()
+  local clients = {}
+  for _, client in ipairs(vim.lsp.get_active_clients({bufnr = 0})) do
+    table.insert(clients, client.name)
+  end
+  local text = table.concat(clients, " • ")
+
+  return {
+    text = text,
+    highlight = {
+      name = "Lsp",
+      attributes = {
+        fg = utils.get_hl("Comment", "foreground"),
+        bold = true,
+        italic = false,
+      }
     },
   }
 end
@@ -28,24 +51,31 @@ M.get_devicon = function()
 
   return {
     text      = icon,
-    length    = vim.fn.strchars(icon),
     highlight = {
-      name = "WinBar" .. group,
-      attributes = nil,
+      name = group,
+      devicon = true,
     },
   }
 end
 
 -- Tail, relative, or active filepath of buffer
 M.get_filepath = function()
-  local filepaths = { tail = "%t", rel = "%f", abs = "%F" }
-  local filepath = filepaths[require("tinbar").config.filepath_type] or "%t"
+  local filepaths = { tail = "%:t", rel = "%:.", abs = "%:p:~" }
+  local filepath = vim.fn.expand(filepaths[require("bartender.config").filepath_type])
+  filepath = filepath == "" and "???" or filepath
+
+  -- Note: Can't use length of components because navic uses length of this (loop)
+  local truncate_width = vim.api.nvim_win_get_width(0)/3
+  local truncate_length = 5
+  while #vim.fn.expand(filepath) > truncate_width and truncate_length >= 1 do
+    filepath = vim.fn.pathshorten(filepath, truncate_length)
+    truncate_length = truncate_length - 1
+  end
 
   return {
     text      = filepath,
-    length    = vim.fn.strchars(filepath),
     highlight = {
-      name = "WinBarFilepath",
+      name = "Filepath",
       attributes = {
         fg = utils.get_hl("Normal", "foreground"),
       },
@@ -55,14 +85,10 @@ end
 
 -- Readonly indicator
 M.get_readonly = function()
-  local is_readonly = vim.opt.readonly:get()
-  local readonly_text = is_readonly and " " or ""
-
   return {
-    text      = readonly_text,
-    length    = vim.fn.strchars(readonly_text),
+    text      = vim.o.readonly and " " or "",
     highlight = {
-      name = "WinBarReadonly",
+      name = "Readonly",
       attributes = {
         fg = "lightblue",
       }
@@ -72,14 +98,10 @@ end
 
 -- Modified indicator
 M.get_modified = function()
-  local is_modified = vim.opt.modified:get()
-  local modified_text = is_modified and " ●" or ""
-
   return {
-    text      = modified_text,
-    length    = vim.fn.strchars(modified_text),
+    text      = vim.o.modified and " ●" or "",
     highlight = {
-      name = "WinBarModified",
+      name = "Modified",
       attributes = {
         fg = "lightpink",
       },
@@ -89,7 +111,7 @@ end
 
 -- Treesitter code context
 M.get_navic = function()
-  local max_chars = ((vim.api.nvim_win_get_width(0)/2)-(require("tinbar").center_length()/2))*3/4
+  local max_chars = ((vim.api.nvim_win_get_width(0)/2)-(require("bartender").center_length()/2))*3/4
   if max_chars < 0 then max_chars = 0 end
 
   local code_context = require("nvim-navic").get_location()                  -- Note: includes statusline/winbar highlighting
@@ -113,7 +135,6 @@ M.get_navic = function()
     length    = vim.fn.strchars(code_context_naked),
     highlight = {
       name = "",
-      attributes = nil,
     }
   }
 end
@@ -122,9 +143,8 @@ end
 M.get_center_space = function()
   return {
     text      = " ",
-    length    = 1,
     highlight = {
-      name = "WinBarCenterSpace",
+      name = "CenterSpace",
       attributes = {
       },
     },
@@ -135,45 +155,12 @@ end
 
 --[[ Edges ]]
 
-M.get_leftside_left_edge = function()
-  local icon =  ""
-
-  return {
-    text = icon,
-    length = vim.fn.strchars(icon),
-    highlight = {
-      name = "WinBarLeftsideLeftEdge",
-      attributes = {
-      },
-      reverse = true,
-    },
-  }
-end
-
-M.get_leftside_right_edge = function()
-  local icon = ""
-
-  return {
-    text = icon,
-    length = vim.fn.strchars(icon),
-    highlight = {
-      name = "WinBarLeftsideRightEdge",
-      attributes = {
-      },
-      reverse = true,
-    },
-  }
-end
-
 -- Left edge/border of center components
 M.get_centerside_left_edge = function()
-  local icon =  ""
-
   return {
-    text      = icon,
-    length    = vim.fn.strchars(icon),
+    text      = "",
     highlight = {
-      name = "WinBarCentersideLeftEdge",
+      name = "CentersideLeftEdge",
       attributes = {
       },
       reverse = true
@@ -183,13 +170,10 @@ end
 
 -- Right edge/border of center components
 M.get_centerside_right_edge = function()
-  local icon =  ""
-
   return {
-    text      = icon,
-    length    = vim.fn.strchars(icon),
+    text      = "",
     highlight = {
-      name = "WinBarCentersideRightEdge",
+      name = "CentersideRightEdge",
       attributes = {
       },
       reverse = true,
@@ -205,10 +189,8 @@ end
 M.get_left_padding = function()
   return {
     text = " ",
-    length = 1,
     highlight = {
       name = "Normal",
-      attributes = nil,
     },
   }
 end
@@ -217,32 +199,39 @@ end
 M.get_right_padding = function()
   return {
     text = " ",
-    length = 1,
     highlight = {
       name = "Normal",
-      attributes = nil,
     },
   }
 end
 
 -- Padding to keep the center components static
 M.get_left_center_padding = function()
+  local bartender = require("bartender")
+  local diff = 0
+  if bartender.left_length() < bartender.right_length() then
+    diff = bartender.right_length() - bartender.left_length()
+  end
+
   return {
-    text = string.rep(" ", require("tinbar").right_length()),
+    text = string.rep(" ", diff),
     highlight = {
       name = "Normal",
-      attributes = nil,
     },
   }
 end
 
 -- Padding to keep the center components static
 M.get_right_center_padding = function()
+  local bartender = require("bartender")
+  local diff = 0
+  if bartender.left_length() > bartender.right_length() then
+    diff = bartender.left_length() - bartender.right_length()
+  end
   return {
-    text = string.rep(" ", require("tinbar").left_length()),
+    text = string.rep(" ", diff),
     highlight = {
       name = "Normal",
-      attributes = nil,
     },
   }
 end
