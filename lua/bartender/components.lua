@@ -162,8 +162,8 @@ M.get_centerside_left_edge = function()
     highlight = {
       name = "CentersideLeftEdge",
       attributes = {
+        reverse = true
       },
-      reverse = true
     },
   }
 end
@@ -175,8 +175,8 @@ M.get_centerside_right_edge = function()
     highlight = {
       name = "CentersideRightEdge",
       attributes = {
+        reverse = true,
       },
-      reverse = true,
     },
   }
 end

@@ -24,8 +24,9 @@ M.set_highlights = function(components, background)
     elseif component.highlight.attributes ~= nil then
       -- Use section's background if one was not specified for component
       local attributes = vim.tbl_deep_extend('keep', component.highlight.attributes, { bg = background })
-      -- Swap fg and bg values if specified (for borders)
-      if component.highlight.reverse == true then
+      -- Make reverse work with transparency
+      if attributes.reverse ~= nil then
+        attributes.reverse = nil
         local prev_fg = attributes.fg
         attributes.fg = attributes.bg
         attributes.bg = prev_fg
