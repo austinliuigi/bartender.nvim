@@ -28,7 +28,7 @@ M.center = function()
       components.get_centerside_left_edge(),
       components.get_devicon(),
       components.get_center_space(),
-      components.get_filepath(),
+      components.get_filepath(require("bartender.config").filepath_type),
       components.get_readonly(),
       components.get_modified(),
       components.get_centerside_right_edge(),

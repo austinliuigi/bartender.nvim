@@ -3,13 +3,10 @@ local config = require("bartender.config")
 
 local bartender = {}
 
-bartender.toggle_filepath_type = function()
-  local next_type = {
-    tail = "rel",
-    rel = "abs",
-    abs = "tail",
-  }
-  config.filepath_type = next_type[config.filepath_type]
+bartender.setup = function(cfg)
+  for key, value in pairs(cfg) do
+    config[key] = value
+  end
 end
 
 bartender.get_section_length = function(section)
@@ -26,10 +23,16 @@ end
 --[[ Set winbar options ]]
 
 -- Return winbar expression for active winbar
-bartender.set_active = function()
+bartender.set_active = function(bar)
   local bar_text = {}
 
-  local sections = config.winbar().sections
+  local bars = {
+    winbar = config.winbar,
+    statusline = config.statusline,
+    tabline = config.tabline,
+  }
+
+  local sections = bars[bar]().sections
 
   for index, section in ipairs(sections) do
     for _, component in ipairs(section.components) do
@@ -46,7 +49,7 @@ bartender.set_active = function()
 end
 
 -- Return winbar expression for inactive winbar
-bartender.set_inactive = function()
+bartender.set_inactive = function(bar)
   local bar_text = {}
 
   local sections = config.winbar().sections
@@ -69,32 +72,65 @@ end
 
 -- [[ Autocommands ]
 
--- Set winbar options
-vim.api.nvim_create_augroup("Bartender", {clear = true})
-vim.api.nvim_create_autocmd({ "WinEnter", "BufEnter" }, {
-  group   = "Bartender",
-  pattern = {'*'},
-  callback = function()
-    if vim.api.nvim_win_get_config(0).zindex ~= nil then
-      vim.wo.winbar = ""
-    else
-      vim.wo.winbar = "%{%v:lua.require('bartender').set_active()%}"
+if config.winbar ~= nil then
+  -- Set winbar options
+  vim.api.nvim_create_augroup("Bartender", {clear = true})
+  vim.api.nvim_create_autocmd({ "WinEnter", "BufEnter" }, {
+    group   = "Bartender",
+    pattern = {'*'},
+    callback = function()
+      if vim.api.nvim_win_get_config(0).zindex ~= nil then
+        vim.wo.winbar = ""
+      else
+        vim.wo.winbar = "%{%v:lua.require('bartender').set_active('winbar')%}"
+      end
     end
-  end
-})
-vim.api.nvim_create_autocmd({ "WinLeave", "BufLeave" }, {
-  group   = "Bartender",
-  pattern = {'*'},
-  callback = function()
-    if vim.api.nvim_win_get_config(0).zindex ~= nil then
-      vim.wo.winbar = ""
-    else
-      vim.wo.winbar = "%{%v:lua.require('bartender').set_inactive()%}"
+  })
+  vim.api.nvim_create_autocmd({ "WinLeave", "BufLeave" }, {
+    group   = "Bartender",
+    pattern = {'*'},
+    callback = function()
+      if vim.api.nvim_win_get_config(0).zindex ~= nil then
+        vim.wo.winbar = ""
+      else
+        vim.wo.winbar = "%{%v:lua.require('bartender').set_inactive('winbar')%}"
+      end
     end
-  end
-})
+  })
+end
 
--- Set winbar highlights after changing colorschemes
+if config.statusline ~= nil then
+  -- Set winbar options
+  vim.api.nvim_create_augroup("Bartender", {clear = true})
+  vim.api.nvim_create_autocmd({ "WinEnter", "BufEnter" }, {
+    group   = "Bartender",
+    pattern = {'*'},
+    callback = function()
+      if vim.api.nvim_win_get_config(0).zindex ~= nil then
+        vim.wo.statusline = ""
+      else
+        vim.wo.statusline = "%{%v:lua.require('bartender').set_active('statusline')%}"
+      end
+    end
+  })
+  vim.api.nvim_create_autocmd({ "WinLeave", "BufLeave" }, {
+    group   = "Bartender",
+    pattern = {'*'},
+    callback = function()
+      if vim.api.nvim_win_get_config(0).zindex ~= nil then
+        vim.wo.statusline = ""
+      else
+        vim.wo.statusline = "%{%v:lua.require('bartender').set_inactive('statusline')%}"
+      end
+    end
+  })
+end
+
+if config.tabline ~= nil then
+  vim.o.tabline = "%{%v:lua.require('bartender').set_inactive('tabline')%}"
+end
+
+-- Set highlights after changing colorschemes
 vim.api.nvim_create_augroup("BartenderHighlights", {clear = true})
 vim.api.nvim_create_autocmd("ColorScheme", {
   group   = "BartenderHighlights",

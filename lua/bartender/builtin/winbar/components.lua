@@ -82,10 +82,11 @@ M.get_devicon = function()
 end
 
 -- Tail, relative, or active filepath of buffer
-M.get_filepath = function()
+M.get_filepath = function(path_type)
   local filepaths = { tail = "%:t", rel = "%:.", abs = "%:p:~" }
-  local filepath = vim.fn.expand(filepaths[require("bartender.config").filepath_type])
-  filepath = filepath == "" and "???" or filepath
+  path_type = path_type or "tail"
+  local filepath = vim.fn.expand(filepaths[path_type])
+  if filepath == "" then filepath = "???" end
 
   -- Note: Can't use length of components because navic uses length of this (loop)
   local truncate_width = vim.api.nvim_win_get_width(0)/3
