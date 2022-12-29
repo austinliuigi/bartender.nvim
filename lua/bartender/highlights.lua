@@ -13,7 +13,7 @@ M.colors = function()
 end
 
 -- @param components table {}
-M.set_highlights = function(components, background)
+M.create_highlights = function(components, background)
   for _, component in ipairs(components) do
     -- Define highlight group if component is devicon
     if component.highlight.devicon == true then

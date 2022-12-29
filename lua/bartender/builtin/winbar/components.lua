@@ -17,29 +17,52 @@ end
 
 M.get_lsp_symbol = function()
   return {
-    text = #vim.lsp.get_active_clients({bufnr = 0}) == 0 and "" or  " ",
+    text = " ",
     highlight = {
-      name = "Special",
-    },
+      name = "Function",
+    }
+  }
+end
+
+M.get_lsp_separator = function()
+  return {
+    text = " • ",
+    highlight = {
+      name = "Normal",
+    }
   }
 end
 
 M.get_lsp_clients = function()
+  local sections = require("bartender.builtin.winbar.sections")
+  local max_chars = ((vim.api.nvim_win_get_width(0)/2)-(require("bartender").get_section_length(sections.center())/2))*3/4
+  if max_chars < 0 then max_chars = 0 end
+
+  local symbol, separator = " ", " • "
+  local symbol_length, separator_length = vim.fn.strchars(symbol), vim.fn.strchars(separator)
+  local client_hl, symbol_hl, separator_hl = "%#Comment#", "%#Type#", "%#Normal#"
+
+  local sum = symbol_length
   local clients = {}
-  for _, client in ipairs(vim.lsp.get_active_clients({bufnr = 0})) do
-    table.insert(clients, client.name)
+  for idx, client in ipairs(vim.lsp.get_active_clients({bufnr = 0})) do
+    sum = sum + #client.name + (idx > 1 and separator_length or 0)
+    if sum > max_chars then
+      if idx > 1 then
+        table.insert(clients, client_hl .. "..")
+      end
+      break
+    end
+    table.insert(clients, client_hl .. client.name)
   end
-  local text = table.concat(clients, " • ")
+
+  local text = #clients > 1 and string.format("%s%s", symbol_hl .. symbol, table.concat(clients, separator_hl .. separator)) or ""
+  local text_without_highlights = string.gsub(text, "%%%#.-%#", "")
 
   return {
     text = text,
+    length = #text_without_highlights,
     highlight = {
-      name = "Lsp",
-      attributes = {
-        fg = utils.get_hl("Comment", "foreground"),
-        bold = true,
-        italic = false,
-      }
+      name = "",
     },
   }
 end
@@ -111,7 +134,8 @@ end
 
 -- Treesitter code context
 M.get_navic = function()
-  local max_chars = ((vim.api.nvim_win_get_width(0)/2)-(require("bartender").center_length()/2))*3/4
+  local sections = require("bartender.builtin.winbar.sections")
+  local max_chars = ((vim.api.nvim_win_get_width(0)/2)-(require("bartender").get_section_length(sections.center())/2))*3/4
   if max_chars < 0 then max_chars = 0 end
 
   local code_context = require("nvim-navic").get_location()                  -- Note: includes statusline/winbar highlighting
@@ -208,9 +232,10 @@ end
 -- Padding to keep the center components static
 M.get_left_center_padding = function()
   local bartender = require("bartender")
+  local sections = require("bartender.builtin.winbar.sections")
   local diff = 0
-  if bartender.left_length() < bartender.right_length() then
-    diff = bartender.right_length() - bartender.left_length()
+  if bartender.get_section_length(sections.left()) < bartender.get_section_length(sections.right()) then
+    diff = bartender.get_section_length(sections.right()) - bartender.get_section_length(sections.left())
   end
 
   return {
@@ -224,9 +249,10 @@ end
 -- Padding to keep the center components static
 M.get_right_center_padding = function()
   local bartender = require("bartender")
+  local sections = require("bartender.builtin.winbar.sections")
   local diff = 0
-  if bartender.left_length() > bartender.right_length() then
-    diff = bartender.left_length() - bartender.right_length()
+  if bartender.get_section_length(sections.left()) > bartender.get_section_length(sections.right()) then
+    diff = bartender.get_section_length(sections.left()) - bartender.get_section_length(sections.right())
   end
   return {
     text = string.rep(" ", diff),
