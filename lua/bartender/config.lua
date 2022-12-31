@@ -3,7 +3,7 @@ local config = {
     highlight_prefix = "Bartender",
     winbar = require("bartender.builtin.winbar"),
     statusline = nil,
-    tabline = nil,
+    tabline = require("bartender.builtin.tabline"),
 }
 
 return config
