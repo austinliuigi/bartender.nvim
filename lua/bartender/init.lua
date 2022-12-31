@@ -18,6 +18,29 @@ bartender.get_section_length = function(section)
   return sum
 end
 
+function benchmark(unit, decPlaces, n, f, ...)
+  local units = {
+    ['seconds'] = 1,
+    ['milliseconds'] = 1000,
+    ['microseconds'] = 1000000,
+    ['nanoseconds'] = 1000000000
+  }
+  local elapsed = 0
+  local multiplier = units[unit]
+  for i = 1, n do
+    local now = os.clock()
+    f(...)
+    elapsed = elapsed + (os.clock() - now)
+  end
+  print(string.format('Benchmark results:\n  - %d function calls\n  - %.'.. decPlaces ..'f %s elapsed\n  - %.'.. decPlaces ..'f %s avg execution time.', n, elapsed * multiplier, unit, (elapsed / n) * multiplier, unit))
+end
+
+bartender.benchmark = function(bar)
+  benchmark("milliseconds", 2, 1000, function()
+    bartender.set_active(bar)
+  end)
+end
+
 
 
 --[[ Set winbar options ]]
@@ -127,7 +150,7 @@ if config.statusline ~= nil then
 end
 
 if config.tabline ~= nil then
-  vim.o.tabline = "%{%v:lua.require('bartender').set_inactive('tabline')%}"
+  vim.o.tabline = "%{%v:lua.require('bartender').set_active('tabline')%}"
 end
 
 -- Set highlights after changing colorschemes
@@ -136,8 +159,10 @@ vim.api.nvim_create_autocmd("ColorScheme", {
   group   = "BartenderHighlights",
   pattern = {'*'},
   callback = function()
-    for _, section in ipairs(config.winbar().sections) do
-      highlights.create_highlights(section.components, section.bg)
+    for _, bar in ipairs({"winbar", --[[ "statusline", ]] "tabline"}) do
+      for _, section in ipairs(config[bar]().sections) do
+        highlights.create_highlights(section.components, section.bg)
+      end
     end
   end,
 })
