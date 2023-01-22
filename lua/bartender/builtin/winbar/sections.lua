@@ -3,19 +3,41 @@ local utils = require("bartender.utils")
 
 local M = {}
 
+-- M.left = function()
+--   return {
+--     bg = nil,
+--     components = {
+--       components.get_lsp_clients(),
+--     }
+--   }
+-- end
 M.left = function()
+  local clients = {}
+
+  for _, client in ipairs(vim.lsp.get_active_clients({bufnr = 0})) do
+    table.insert(clients, components.test_lsp(client.name))
+  end
+
   return {
     bg = nil,
-    components = {
-      components.get_lsp_clients(),
-    }
+    components = clients,
   }
 end
+-- M.left = function()
+--   return {
+--     bg = nil,
+--     components = {
+--       components.get_lsp_symbol(),
+--       components.get_devicon(),
+--     }
+--   }
+-- end
 
 M.left_center_padding = function()
   return {
     bg = nil,
     components = {
+      components.get_separator(),
       components.get_left_center_padding()
     }
   }
@@ -40,7 +62,8 @@ M.right_center_padding = function()
   return {
     bg = nil,
     components = {
-      components.get_right_center_padding()
+      components.get_right_center_padding(),
+      components.get_separator(),
     }
   }
 end

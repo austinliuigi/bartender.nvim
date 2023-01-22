@@ -15,11 +15,22 @@ M.get_shroom = function()
   }
 end
 
+M.test_lsp = function(client)
+  return {
+    name = "test_lsp",
+    text = client,
+    highlight = {
+      fg = utils.get_hl("Comment", "foreground")
+    }
+  }
+end
+
 M.get_lsp_symbol = function()
   return {
+    name = "LspSymbol",
     text = " ",
     highlight = {
-      name = "Function",
+      fg = "#000000"
     }
   }
 end
@@ -27,9 +38,7 @@ end
 M.get_lsp_separator = function()
   return {
     text = " • ",
-    highlight = {
-      name = "Normal",
-    }
+    highlight = "Normal"
   }
 end
 
@@ -67,15 +76,23 @@ M.get_lsp_clients = function()
   }
 end
 
+M.get_separator = function()
+  return {
+    name = "Separator",
+    text = "%=",
+    highlight = "Normal",
+  }
+end
+
 -- Devicon corresponding to buffer
 M.get_devicon = function()
   local filename, fileext = vim.fn.expand("%:t"), vim.fn.expand("%:e")
   local icon, group = require("nvim-web-devicons").get_icon(filename, fileext, { default = true })
 
   return {
+    name = "Icon",
     text      = icon,
     highlight = {
-      name = group,
       devicon = true,
     },
   }
@@ -97,12 +114,10 @@ M.get_filepath = function(path_type)
   end
 
   return {
+    name = "Filepath",
     text      = filepath,
     highlight = {
-      name = "Filepath",
-      attributes = {
-        fg = utils.get_hl("Normal", "foreground"),
-      },
+      fg = utils.get_hl("Normal", "foreground"),
     },
   }
 end
@@ -110,12 +125,10 @@ end
 -- Readonly indicator
 M.get_readonly = function()
   return {
+    name = "Readonly",
     text      = vim.o.readonly and " " or "",
     highlight = {
-      name = "Readonly",
-      attributes = {
-        fg = "lightblue",
-      }
+      fg = "lightblue",
     },
   }
 end
@@ -123,12 +136,10 @@ end
 -- Modified indicator
 M.get_modified = function()
   return {
+    name = "Modified",
     text      = vim.o.modified and " ●" or "",
     highlight = {
-      name = "Modified",
-      attributes = {
-        fg = "lightpink",
-      },
+      fg = "lightpink",
     },
   }
 end
@@ -158,21 +169,17 @@ M.get_navic = function()
   return {
     text      = code_context,
     length    = vim.fn.strchars(code_context_naked),
-    highlight = {
-      name = "",
-    }
+    highlight = ""
   }
 end
 
 -- Space character for separating center components
 M.get_center_space = function()
   return {
+    name = "CenterSpace",
     text      = " ",
     highlight = {
-      name = "CenterSpace",
-      attributes = {
-      },
-    },
+    }
   }
 end
 
@@ -183,12 +190,10 @@ end
 -- Left edge/border of center components
 M.get_centerside_left_edge = function()
   return {
+    name = "CentersideLeftEdge",
     text      = "",
     highlight = {
-      name = "CentersideLeftEdge",
-      attributes = {
-        reverse = true
-      },
+      reverse = true
     },
   }
 end
@@ -196,12 +201,10 @@ end
 -- Right edge/border of center components
 M.get_centerside_right_edge = function()
   return {
+    name = "CentersideRightEdge",
     text      = "",
     highlight = {
-      name = "CentersideRightEdge",
-      attributes = {
-        reverse = true,
-      },
+      reverse = true,
     },
   }
 end
@@ -213,20 +216,18 @@ end
 -- Padding between left screen edge and leftmost component
 M.get_left_padding = function()
   return {
+    name = "LeftPadding",
     text = " ",
-    highlight = {
-      name = "Normal",
-    },
+    highlight = "Normal",
   }
 end
 
 -- Padding between right screen edge and rightmost component
 M.get_right_padding = function()
   return {
+    name = "RightPadding",
     text = " ",
-    highlight = {
-      name = "Normal",
-    },
+    highlight = "Normal",
   }
 end
 
@@ -241,9 +242,7 @@ M.get_left_center_padding = function()
 
   return {
     text = string.rep(" ", diff),
-    highlight = {
-      name = "Normal",
-    },
+    highlight = "Normal",
   }
 end
 
@@ -257,9 +256,7 @@ M.get_right_center_padding = function()
   end
   return {
     text = string.rep(" ", diff),
-    highlight = {
-      name = "Normal",
-    },
+    highlight = "Normal",
   }
 end
 

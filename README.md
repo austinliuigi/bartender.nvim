@@ -1,10 +1,15 @@
-## Terminology
+# 🍺 Bartender
+**bartender.nvim** is a plugin to help you manage your bars
+
+## Concept
 
 ### Sections
-A section is defined by its background color and location.
+A section is defined by its background color and location in a bar.
 
-### Components (table|function)
-A component is an atomic piece of your statusline. Without components, your statusline would be empty.
+`local section = {}`
+
+### Components
+A component is an atomic piece of your statusline. Components are defined by their text and highlights.
 
 `local component = {}`
 
@@ -12,19 +17,13 @@ A component is an atomic piece of your statusline. Without components, your stat
 
     String that the component should display
 
-2. `component.length`: *int (optional)*
-
-    Length of the component. If nil, uses length of component.text
-
-    Should rarely need to be overridden.
-
-3. `component.highlight`: *table*
+2. `component.highlight`: *string | table*
 
     1. `component.highlight.name`: *string*
 
         Name of the highlight group to use for the component
 
-    2. `component.highlight.attributes`: *table (optional)*
+    2. `component.highlight.attributes`: *table* **(optional)**
 
         Table with the same form as what `nvim_set_hl()` takes.
 
@@ -38,6 +37,12 @@ A component is an atomic piece of your statusline. Without components, your stat
 
     4. `component.highlight.devicon`:
 
-4. `component.click`:
+4. `component.click`: *function*
 
     Function that is run when you click on the component
+
+## Usage
+
+### Adding Sections
+
+### Adding Components
