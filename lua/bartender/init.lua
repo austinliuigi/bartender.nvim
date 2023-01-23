@@ -44,23 +44,35 @@ end
 
 --- Make parent tables if they don't exist
 ---
----@param base table
----@param ...
-local function ensure_tables(base, ...)
+---@param partial boolean Whether or not to fill partially if a child if nil
+---@param force boolean Whether or not to overwrite a child if it isn't a table
+---@param base table Base table
+local function ensure_exists(partial, force, base, ...)
   local tbl = base
   local args = {...}
 
+  local temp = vim.deepcopy(tbl)
   for _, child in ipairs(args) do
-    if child == nil then return false end
-
-    if tbl[child] == nil then
-      tbl[child] = {}
-    elseif tbl[child] ~= "table" then
+    if child == nil then
+      if partial then
+        tbl = temp
+      end
       return false
     end
 
-    tbl = tbl[child]
+    if temp[child] == nil then
+      temp[child] = {}
+    elseif temp[child] ~= "table" then
+      if force then
+        temp[child] = {}
+      else
+      return false
+    end
+    end
+
+    temp = temp[child]
   end
+  tbl = temp
 end
 
 
@@ -73,9 +85,9 @@ local function is_disabled(winid, bufnr)
   if vim.api.nvim_win_get_config(winid).zindex ~= nil then
     return true
   end
-  if vim.bo.buftype == "terminal" then
-    return true
-  end
+  -- if vim.bo.buftype == "terminal" then
+  --   return true
+  -- end
 end
 
 
@@ -113,6 +125,7 @@ end
 --- Add builtin components
 local function add_builtins()
   require("bartender.builtin.components")
+  require("bartender.builtin.sections")
 end
 
 
@@ -125,6 +138,7 @@ end
 ---@param bar string
 ---@param winid integer|nil ':h window-ID' if bar is local to a window
 local function add_cache_entry(bar, winid)
+  -- Determine if bar is global or local
   local window_local = is_local(bar)
   local variants = { "active", "inactive" }
   if not window_local then
@@ -133,12 +147,10 @@ local function add_cache_entry(bar, winid)
   end
 
   local capitalize = require("bartender.utils").capitalize
-
   for _, variant in ipairs(variants) do
     -- Extract the bar table (table of section_tables)
     local config_bar_section_table, cache_bar_table = config[bar][variant], cache.bars[bar][variant]
     if config_bar_section_table == nil then return end
-
     if window_local then
       cache_bar_table[winid] = {}
       cache_bar_table = cache_bar_table[winid]
@@ -146,52 +158,69 @@ local function add_cache_entry(bar, winid)
 
     -- For each section_table supplied in config
     for section_index, section_table in ipairs(config_bar_section_table) do
-      local section_name = section_table[1]
+      local section_name = section_table.name
       if section_table.args == nil then section_table.args = {} end
       local section_events = cache.section_lib[section_name].events
 
-      if section_events == nil then
-        -- Recompute components on each statusline refresh
-      else
+      -- Insert metadata into cache entry
+      cache_bar_table[section_index] = {
+        meta = {
+          name = section_name,
+          events = section_events,
+          args = section_table.args
+        }
+      }
+      if section_events ~= nil then
+        -- Handle case of static component
+        local section_once = false
+        if #section_events == 0 then
+          section_events = "CursorMoved" 
+          section_once = true
+        end
         -- Create autocmd to recompute which components are contained in section
         local bar_variant_section_augroup = get_cache_augroup_name("section", bar, variant, section_index, window_local and winid or nil)
         vim.api.nvim_create_augroup(bar_variant_section_augroup, {clear = true})
         vim.api.nvim_create_autocmd(section_events, {
           group   = bar_variant_section_augroup,
-          pattern = {'*'},
+          pattern = "*",
+          once = section_once,
           callback = function()
-            local section = cache.section_lib[section_name].callback(unpack(section_table.args))
-
-            -- Flush section's cache entry of its previous value
-            cache_bar_table[section_index] = {bg = section.bg, components = {}}
+            cache_bar_table[section_index] = vim.tbl_deep_extend("force", cache_bar_table[section_index], vim.api.nvim_win_call(winid, function() return cache.section_lib[section_name].callback(unpack(section_table.args)) end))
 
             -- Create/clear autogroup for section components
             local bar_variant_section_components_augroup = get_cache_augroup_name("component", bar, variant, section_index, window_local and winid or nil)
             vim.api.nvim_create_augroup(bar_variant_section_components_augroup, {clear = true})
 
             -- For each component in section
-            for component_index, component_table in ipairs(section.components) do
-              local component_name = component_table[1]
+            for component_index, component_table in ipairs(cache_bar_table[section_index].components) do
+              local component_name = component_table.name
               if component_table.args == nil then component_table.args = {} end
               local component_events = cache.component_lib[component_name].events
 
-              if component_events == nil then
-                -- Make the value in cache the callback function to call on each statusline refresh
-                cache_bar_table[section_index].components[component_index] = {
-                  name = component_table[1],
-                  callback = cache.component_lib[component_name].callback,
-                  args = component_table.args,
+              -- Insert metadata into cache entry
+              cache_bar_table[section_index].components[component_index] = {
+                meta = {
+                  name = component_name,
+                  events = component_events,
+                  args = component_table.args
                 }
-              else
+              }
+              if component_events ~= nil then
+                -- Handle case of static component
+                local component_once = false
+                if #component_events == 0 then
+                  component_events = "CursorMoved" 
+                  component_once = true
+                end
                 -- Create an autocmd to update component table in the cache
                 vim.api.nvim_create_autocmd(component_events, {
                   group = bar_variant_section_components_augroup,
                   pattern = "*",
                   -- pattern = (not window_local) and '*' or nil,
                   -- buffer = window_local and 0 or nil, -- make autocmd local to buffer if bar is local to window
-                  once = (#component_events == 0), -- only compute once if event is "" or {},
+                  once = component_once, -- only compute once if event is "" or {},
                   callback = function()
-                    cache_bar_table[section_index].components[component_index] = vim.api.nvim_win_call(winid, function() return cache.component_lib[component_name].callback(unpack(component_table).args) end)
+                    cache_bar_table[section_index].components[component_index] = vim.tbl_deep_extend("force", cache_bar_table[section_index].components[component_index], vim.api.nvim_win_call(winid, function() return cache.component_lib[component_name].callback(unpack(component_table.args)) end))
                   end,
                 })
                 vim.api.nvim_exec_autocmds(component_events, {group = bar_variant_section_components_augroup})
@@ -267,12 +296,12 @@ local function set_option(bar)
     vim.api.nvim_create_autocmd({ "WinLeave", "BufLeave" }, {
       group = group_name,
       pattern = {'*'},
-      callback = vim.schedule_wrap(function()
+      callback = function()
         if not is_disabled() then
           -- TODO: Check if autocommands pass winid of window that you leave
           vim.wo[bar] = options.inactive
         end
-      end)
+      end
     })
   else
     -- Remove any local options (in case bar switched from local to global)
@@ -392,11 +421,10 @@ end
 ---@param events string|table Events that trigger the component to update
 bartender.add_component = function(name, callback, events)
   -- Return name of component in addition to what callback returns
-  cache.component_lib[name] = {callback = function(...)
-    local component = callback(...)
-    component.name = name
-    return component
-  end, events = events}
+  cache.component_lib[name] = {
+    callback = callback,
+    events = events,
+  }
 end
 
 
@@ -408,23 +436,33 @@ end
 ---@param events string|table Events that trigger the section to update
 bartender.add_section = function(name, callback, events)
   -- Return name of section in addition to what callback returns
-  cache.section_lib[name] = {callback = function(...)
-    local section = callback(...)
-    section.name = name
-    return section
-  end, events = events}
+  cache.section_lib[name] = {
+    callback = callback,
+    events = events,
+  }
 end
 
 
 
 --- Get length(number of characters) of section
 ---
----@param section table
-bartender.get_section_length = function(section)
+---@param bar string
+---@param variant string
+---@param section string
+bartender.get_section_length = function(bar, variant, section)
+  local cache_entry = cache.bars[bar][variant]
+  if is_local(bar) then cache_entry = cache_entry[vim.api.nvim_get_current_win()] end
+
   local sum = 0
-  for _, component in ipairs(section.components) do
-    local component_length = component.length or vim.fn.strchars(component.text)
-    sum = sum + component_length
+  for _, section_tbl in ipairs(cache_entry) do
+    if section_tbl.meta.name == section then
+      for _, component_tbl in ipairs(section_tbl.components) do
+        local text = component_tbl.text:gsub("%%%*", ""):gsub("%%%#.-%#", "")
+        sum = sum + vim.fn.strchars(text)
+        -- sum = sum + vim.fn.strchars(component_tbl.text:gsub("%%%*", ""):gsub("%%%#.-%#", ""))
+      end
+      break
+    end
   end
   return sum
 end
@@ -460,11 +498,11 @@ end
 ---@param bar "winbar"|"statusline"|"tabline"
 ---@param variant "active"|"inactive"|"global"|nil
 bartender.benchmark = function(bar, variant)
-  benchmark("milliseconds", 2, 1000, function()
+  benchmark("milliseconds", 2, 1e4, function()
     bar = bar or "winbar"
     variant = variant or "active"
-    bartender.set_active("winbar")
-    -- bartender.get_bar_string('winbar', 'active')
+    -- bartender.set_active("winbar")
+    bartender.get_bar_string('winbar', 'active')
   end)
 end
 
@@ -482,11 +520,26 @@ bartender.get_bar_string = function(bar, variant)
   if cache_bar_table == nil then return "" end
 
   for section_index, section in ipairs(cache_bar_table) do
+    local continuously_upate_section = (section.meta.events == nil)
+    if continuously_upate_section then
+      section = vim.tbl_deep_extend("force", section, cache.section_lib[section.meta.name].callback(unpack(section.meta.args)))
+      for index, component_table in ipairs(section.components) do
+        section.components[index] = {
+          meta = {
+            name = component_table.name,
+            args = component_table.args or {}
+          }
+        }
+      end
+      cache_bar_table[section_index] = section -- Update cache to point to section
+    end
     for component_index, component in ipairs(section.components) do
       -- Handle case when event is nil (update on each statusline refresh)
-      local continuously_upate = (component.callback ~= nil)
-      if continuously_upate then
-        component = component.callback(unpack(component.args))
+      local continuously_upate_component = (component.meta.events == nil)
+      if continuously_upate_component then
+        -- component = cache.component_lib[component.meta.name].callback(unpack(component.meta.args))
+        component = vim.tbl_deep_extend("force", component, cache.component_lib[component.meta.name].callback(unpack(component.meta.args)))
+        cache_bar_table[section_index].components[component_index] = component -- Update cache to point to component
       end
 
       local highlight_name

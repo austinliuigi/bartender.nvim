@@ -3,14 +3,18 @@ local config = {
     highlight_prefix = "Bartender",
     winbar = {
       active = {
-        { "left" },
-        { "center" },
-        { "right" },
+        { name = "left" },
+        { name = "left_padding", args = { "winbar", "active", { "left" }, { "right" } } },
+        { name = "center" },
+        { name = "right_padding", args = { "winbar", "active", { "left" }, { "right" } } },
+        { name = "right" },
       },
       inactive = {
-        { "left" },
-        { "center" },
-        { "right" },
+        { name = "left" },
+        { name = "left_padding", args = { "winbar", "inactive", { "left" }, { "right" } } },
+        { name = "center" },
+        { name = "right_padding", args = { "winbar", "inactive", { "left" }, { "right" } } },
+        { name = "right" },
       },
     },
     statusline = {
