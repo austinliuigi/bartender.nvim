@@ -40,7 +40,7 @@ M.get_tab_separator_left = function(tab_number)
     highlight = {
       name = "TabSeparator",
       attributes = {
-        fg = utils.get_hl(tab_hl, "background"),
+        fg = utils.get_hightlight_attr(tab_hl, "background"),
       }
     }
   }
@@ -53,7 +53,7 @@ M.get_tab_separator_right = function(tab_number)
     highlight = {
       name = current and "TabSeparatorCurrent" or "TabSeparator",
       attributes = {
-        fg = utils.get_hl(current and curr_tab_hl or tab_hl, "background"),
+        fg = utils.get_hightlight_attr(current and curr_tab_hl or tab_hl, "background"),
       }
     }
   }
@@ -66,7 +66,7 @@ M.get_tab_space = function(tab_number)
     highlight = {
       name = current and "TabSeparatorCurrent" or "TabSeparator",
       attributes = {
-        fg = utils.get_hl(current and curr_tab_hl or tab_hl, "background"),
+        fg = utils.get_hightlight_attr(current and curr_tab_hl or tab_hl, "background"),
       }
     }
   }

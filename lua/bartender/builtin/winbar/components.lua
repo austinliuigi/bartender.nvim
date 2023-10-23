@@ -9,7 +9,7 @@ M.get_shroom = function()
     highlight = {
       name = "Shroom",
       attributes = {
-        fg = utils.get_hl("Function", "foreground"),
+        fg = utils.get_hightlight_attr("Function", "foreground"),
       },
     },
   }
@@ -20,7 +20,7 @@ M.test_lsp = function(client)
     name = "test_lsp",
     text = client,
     highlight = {
-      fg = utils.get_hl("Comment", "foreground")
+      fg = utils.get_hightlight_attr("Comment", "foreground")
     }
   }
 end
@@ -117,7 +117,7 @@ M.get_filepath = function(path_type)
     name = "Filepath",
     text      = filepath,
     highlight = {
-      fg = utils.get_hl("Normal", "foreground"),
+      fg = utils.get_hightlight_attr("Normal", "foreground"),
     },
   }
 end

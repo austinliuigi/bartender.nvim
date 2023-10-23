@@ -1,0 +1,9 @@
+- ( ) 
+- ( ) benchmark non-cache
+- ( ) implement cache
+- ( ) benchmark cache
+- ( ) allow `args` in section_spec and component_spec to be dynamic
+
+- ( ) return true from autocmd callback to delete it
+
+- ( ) use <C-W><C-X> to swap windows

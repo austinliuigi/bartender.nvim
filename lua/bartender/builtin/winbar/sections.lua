@@ -45,7 +45,7 @@ end
 
 M.center = function()
   return {
-    bg = utils.get_hl("Comment", "foreground"),
+    bg = utils.get_hightlight_attr("Comment", "foreground"),
     components = {
       components.get_centerside_left_edge(),
       components.get_devicon(),
