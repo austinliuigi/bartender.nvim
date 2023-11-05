@@ -1,31 +1,27 @@
 # 🍺 Bartender
+
 **bartender.nvim** is a plugin to help you manage your bars
 
 ## Concept
 
-### Sections
-A section is defined by its background color and location in a bar.
-
-`local section = {}`
-
 ### Components
-A component is an atomic piece of your statusline. Components are defined by their text and highlights.
 
-`local component = {}`
+A component is an atomic piece of your statusline.
 
-1. `component.text`: *string*
+#### Creating Components
+
+A component is simply a function that returns a table with the following keys:
+
+1. `text`: *string*
 
     String that the component should display
 
-2. `component.highlight`: *string | table*
+2. `highlight`: *string | table*
 
-    1. `component.highlight.name`: *string*
+    - if the type is a string, it will act as the highlight-group name that this
+      component will use for it's highlighting
 
-        Name of the highlight group to use for the component
-
-    2. `component.highlight.attributes`: *table* **(optional)**
-
-        Table with the same form as what `nvim_set_hl()` takes.
+    - if the type is a table, it with the same form as what `nvim_set_hl()` takes.
 
         If non-nil, a highlight group for `component.text` is created
         with provided attributes. The name of this new highlight group
@@ -33,16 +29,24 @@ A component is an atomic piece of your statusline. Components are defined by the
 
         If nil, a new highlight group is not defined.
 
-    3. `component.highlight.reverse`:
-
-    4. `component.highlight.devicon`:
-
-4. `component.click`: *function*
+4. `click`: *function -> nil*
 
     Function that is run when you click on the component
 
+
+### Sections
+
+A section is a group of components. Sections exist for the following reasons:
+
+1. semantic grouping of components
+2. easily setting accent colors
+3. lazily changing components
+
+`local section = {}`
+
 ## Usage
 
-### Adding Sections
 
-### Adding Components
+> Sections and components are evaluated in the context of the window that the
+> bar belongs to at the time of evaluation. Bartender stores the window id of
+> the active window in `bartender.active_winid`.
