@@ -17,8 +17,8 @@ end
 
 function tabs.provider()
   local component_list = {
-    { "    ", highlight = "TabLine" },
-    { "", highlight = sep_hl_inactive() },
+    { "    ", highlight = { fg = utils.get_hl_attr("Normal", "bg"), bg = utils.get_hl_attr("Special", "fg") } },
+    { "", highlight = "Special" },
   }
 
   for tabpagenr = 1, vim.fn.tabpagenr("$") do
@@ -26,24 +26,34 @@ function tabs.provider()
     if tabpagenr == vim.fn.tabpagenr() then
       tab_components = {
         { "", highlight = sep_hl_active() },
-        { "  "..tabpagenr.." ", highlight = "TabLineSel" },
-        { components.filepath,
+        { "  " .. tabpagenr .. " ", highlight = "TabLineSel" },
+        {
+          components.filepath,
           args = function()
-            return {vim.api.nvim_win_get_buf(vim.api.nvim_tabpage_get_win(vim.api.nvim_list_tabpages()[tabpagenr])), ":t"}
+            return {
+              vim.api.nvim_win_get_buf(vim.api.nvim_tabpage_get_win(vim.api.nvim_list_tabpages()[tabpagenr])),
+              ":t",
+            }
           end,
-          highlight = "TabLineSel" },
+          highlight = "TabLineSel",
+        },
         { " ", highlight = "TabLineSel" },
         { "", highlight = sep_hl_active() },
       }
     else
       tab_components = {
         { "", highlight = sep_hl_inactive() },
-        { "  "..tabpagenr.." ", highlight = "TabLine" },
-        { components.filepath,
+        { "  " .. tabpagenr .. " ", highlight = "TabLine" },
+        {
+          components.filepath,
           args = function()
-            return {vim.api.nvim_win_get_buf(vim.api.nvim_tabpage_get_win(vim.api.nvim_list_tabpages()[tabpagenr])), ":t"}
+            return {
+              vim.api.nvim_win_get_buf(vim.api.nvim_tabpage_get_win(vim.api.nvim_list_tabpages()[tabpagenr])),
+              ":t",
+            }
           end,
-          highlight = "TabLine" },
+          highlight = "TabLine",
+        },
         { " ", highlight = "TabLine" },
         { "", highlight = sep_hl_inactive() },
       }
@@ -55,9 +65,8 @@ function tabs.provider()
   end
 
   return {
-    components = component_list
+    components = component_list,
   }
 end
-
 
 return tabs
