@@ -1,6 +1,5 @@
 local filepath = {}
 
-
 --- Filepath of buffer
 --
 ---@param bufnr integer Buffer number
@@ -16,8 +15,10 @@ function filepath.provider(bufnr, modifier)
 
   return {
     text = path,
+    highlight = {
+      bold = true,
+    },
   }, { "BufEnter" }
 end
-
 
 return filepath

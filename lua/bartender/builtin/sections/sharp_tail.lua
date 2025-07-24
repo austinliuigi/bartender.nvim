@@ -5,11 +5,10 @@ local tail = {}
 function tail.provider(fg, bg)
   return {
     components = {
-      { "", highlight = { fg = fg, bg = bg, reverse = true } },
-      { "█", highlight = { fg = fg } },
-    }
+      { "", highlight = { fg = bg, bg = nil, reverse = true } },
+      { "█", highlight = { fg = bg } },
+    },
   }
 end
-
 
 return tail

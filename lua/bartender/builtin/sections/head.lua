@@ -3,16 +3,15 @@ local head = {}
 
 --- Head of bar
 --
-function head.provider(color)
+function head.provider(fg, bg)
   return {
     components = {
-      { "█", highlight = { fg = color } },
-      { components.lsp_root, highlight = { fg = color, reverse = true } },
-      { "", highlight = { fg = color } },
+      { "█", highlight = { fg = bg } },
+      { components.lsp_root, highlight = { fg = fg, bg = bg } },
+      { "", highlight = { fg = bg } },
       { " " },
-    }
+    },
   }
 end
-
 
 return head
