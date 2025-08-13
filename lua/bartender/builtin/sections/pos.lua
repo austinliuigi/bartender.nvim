@@ -9,11 +9,10 @@ function pos.provider(color)
       { " ", highlight = { bg = color } },
       { "%l", highlight = { fg = color, reverse = true } },
       { ":", highlight = { fg = color, reverse = true } },
-      { "%c", highlight = { fg = color, reverse = true } },
+      { "%v", highlight = { fg = color, reverse = true } },
       { " ", highlight = { bg = color } },
-    }
+    },
   }
 end
-
 
 return pos
