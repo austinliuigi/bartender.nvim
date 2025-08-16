@@ -1,6 +1,11 @@
-local utils = require("bartender.utils")
 local highlights = {}
 
+--- Capitalize the given string
+--
+---@param str string to capitalize
+local function capitalize(str)
+  return (str:gsub("^%l", string.upper))
+end
 
 --- Map between a bar and its default highlight group
 --
@@ -10,7 +15,6 @@ highlights.default_hl_groups = {
   tabline = "TabLineFill",
 }
 
-
 --- Get default highlight attributes for a bar
 ---
 ---@param bar string
@@ -18,10 +22,9 @@ highlights.default_hl_groups = {
 function highlights.get_default_hl_attrs(bar)
   return vim.api.nvim_get_hl(0, {
     name = highlights.default_hl_groups[bar],
-    link = false
+    link = false,
   })
 end
-
 
 --- Get name of highlight group for component
 ---
@@ -31,14 +34,19 @@ end
 ---@return string component_hl_name Name of component's highlight group
 highlights.get_highlight_name = function(bar, section_index, component_index)
   local name
-  if utils.is_bar_local(bar) then
-    name = string.format("Bartender%sWindow%sSection%sComponent%s", utils.capitalize(bar), vim.api.nvim_get_current_win(), section_index, component_index)
+  if require("bartender.utils").is_bar_local(bar) then
+    name = string.format(
+      "Bartender%sWindow%sSection%sComponent%s",
+      capitalize(bar),
+      vim.api.nvim_get_current_win(),
+      section_index,
+      component_index
+    )
   else
-    name = string.format("Bartender%sSection%sComponent%s", utils.capitalize(bar), section_index, component_index)
+    name = string.format("Bartender%sSection%sComponent%s", capitalize(bar), section_index, component_index)
   end
   return name
 end
-
 
 --- Convert highlights to attribute tables
 --
@@ -48,13 +56,12 @@ highlights.highlights_to_attrs = function(hl_list)
   local attrs_list = {}
   for _, hl in ipairs(hl_list) do
     if type(hl) == "string" then
-      hl = utils.get_hl_attrs(hl)
+      hl = require("bartender.utils").get_hl_attrs(hl)
     end
     table.insert(attrs_list, hl)
   end
   return attrs_list
 end
-
 
 --- Create highlight for component
 ---
@@ -68,11 +75,8 @@ highlights.create_highlight = function(bar, section_index, component_index, ...)
 
   -- inherit unspecified attributes from bar's default highlight
   -- note: "force" is not an arbitrary decision; it is needed so that unpack() uses all return values since it is the last arg
-  local attributes = vim.tbl_deep_extend('force',
-    highlights.get_default_hl_attrs(bar),
-    unpack(highlights.highlights_to_attrs({...}))
-  )
-
+  local attributes =
+    vim.tbl_deep_extend("force", highlights.get_default_hl_attrs(bar), unpack(highlights.highlights_to_attrs({ ... })))
 
   -- perform reverse manually to dodge unexpected behavior
   --   - when fg is nil, bg should be nil after reverse
@@ -80,13 +84,13 @@ highlights.create_highlight = function(bar, section_index, component_index, ...)
   --   - when bg is nil, fg should be bg of highlight-group "Normal" after reverse
   --     (instead of nil, which neovim interprets as fg of highlight-group "Normal")
   if attributes.reverse then
-    attributes.reverse = nil  -- unset reverse since we are doing it manually
+    attributes.reverse = nil -- unset reverse since we are doing it manually
 
     -- explicitly interpolate bg of highlight-group "Normal"
     if attributes.bg == nil then
       attributes.bg = vim.api.nvim_get_hl(0, {
         name = "Normal",
-        link = false
+        link = false,
       })["bg"]
     end
 
@@ -99,6 +103,5 @@ highlights.create_highlight = function(bar, section_index, component_index, ...)
   vim.api.nvim_set_hl(0, hl_group, attributes)
   return hl_group
 end
-
 
 return highlights

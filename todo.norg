@@ -2,11 +2,11 @@
 - ( ) implement cache
 - ( ) benchmark cache
 - (x) allow `args` in section_spec and component_spec to be dynamic
-
 - ( ) return true from autocmd callback to delete it
 - ( ) have a user autocmd that can trigger /all/ components to refresh
 -- can be useful e.g. after a colorscheme change
 - ( ) highlight should be created only if it doesn't exist /or/ if a component gets re-evaluated
 - ( ) component_spec.highlight can override values in component_spec[1].highlight
 
-- ( ) use <C-W><C-X> to swap windows
+- ( ) remove sections?
+- ( ) allow overrides for each key of component spec, e.g. highlights, on_click, etc.
