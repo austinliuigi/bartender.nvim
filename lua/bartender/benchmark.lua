@@ -1,4 +1,4 @@
-local M
+local M = {}
 
 --- Benchmark how long it takes to run function n times
 ---
@@ -37,7 +37,7 @@ local function benchmark(unit, dec_places, n, f, ...)
   )
 end
 
---- Benchmark how long it takes to compute bar
+--- Benchmark how long it takes to compute a configured bar
 ---
 ---@param bar bartender.Bar
 ---@param variant bartender.BarVariant
@@ -48,7 +48,7 @@ M.run = function(bar, variant)
     return
   end
   benchmark("milliseconds", 2, 1e4, function()
-    require("bartender.resolve").resolve_component_group(bar, "BartenderBenchmark", 1)
+    require("bartender.resolve").resolve_component(component_group, bar, "BartenderBenchmark", 1)
   end)
 end
 
