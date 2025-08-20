@@ -1,10 +1,10 @@
-local lsp_root = {}
+-- Icon representing what lsp is attached to: single-file, project-root, or not attached
 
-function lsp_root.provider()
+return function()
   local icon
 
   -- no lsp attached
-  if #vim.lsp.get_clients({bufnr = 0}) == 0 then
+  if #vim.lsp.get_clients({ bufnr = 0 }) == 0 then
     icon = ""
   -- lsp attached in single-file mode
   elseif #vim.lsp.buf.list_workspace_folders() == 0 then
@@ -15,8 +15,6 @@ function lsp_root.provider()
   end
 
   return {
-    text = icon,
+    icon,
   }
 end
-
-return lsp_root

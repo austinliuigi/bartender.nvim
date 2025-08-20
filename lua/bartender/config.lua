@@ -1,7 +1,24 @@
 local M = {}
 
+local function disable_winbar()
+  local win = vim.api.nvim_get_current_win()
+  local buf = vim.api.nvim_get_current_buf()
+
+  -- disable for popup windows
+  if vim.api.nvim_win_get_config(win).zindex ~= nil then
+    return true
+  end
+
+  -- disable for cmd windows
+  if #vim.fn.getcmdwintype() ~= 0 then
+    return true
+  end
+
+  return false
+end
+
 local default_config = {
-  winbar = nil,
+  winbar = { disable = disable_winbar },
   statusline = nil,
   tabline = nil,
   statuscolumn = nil,

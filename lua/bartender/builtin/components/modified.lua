@@ -1,23 +1,12 @@
-local utils = require("bartender.utils")
-local modified = {}
-
-
 --- Icon showing if current buffer is has been modified
---
----@param lsep? string optional left separator
----@param rsep? string optional right separator
-function modified.provider(lsep, rsep)
-  lsep = lsep or ""
-  rsep = rsep or ""
 
-  local icon = lsep.."●"..rsep
+---@param icon? string Icon to show when current buffer is modified
+return function(icon)
+  icon = icon or "●"
   return {
-    text = vim.o.modified and icon or "",
-    highlight = {
-      fg = utils.get_hl_attr("ErrorMsg", "fg"),
+    vim.o.modified and icon or "",
+    hl = {
+      fg = require("bartender.utils").hl_attr_wrap("ErrorMsg", "fg"),
     },
   }
 end
-
-
-return modified

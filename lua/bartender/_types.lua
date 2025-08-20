@@ -1,47 +1,50 @@
----@alias bar_t "winbar"|"statusline"|"tabline"
----@alias variant_t "active"|"inactive"|"global"
----@alias events nil|string|table
+---@alias bartender.Bar "winbar"|"statusline"|"tabline"
+---@alias bartender.BarVariant "active"|"inactive"|"global"
+
+---@alias bartender.Highlight string|table|fun(): string|table
+---@alias bartender.Events string|(string|string[])[] Examples: "BufWrite" | {"BufWrite", "BufRead"} | { "BufWrite", { "OptionSet", "fileformat" } }
 
 -- COMPONENTS
 ----------------------------------------------------
----
----@class component_t
----@field text string text that should be shown on bar
----@field highlight (string|table)? highlight group or attribute table component should take on
----@field click function?
+---@class bartender.StaticComponent
+---@field [1] string Text to display on bar
+---@field hl? bartender.Highlight Highlight group or attribute table for component
+---@field on_click? function Click handler for component
 
----@alias component_provider fun(): component_t, events function that provides the components and events to update on
+---@class bartender.DynamicComponent
+---@field [1] bartender.DynamicComponentProvider Component provider
+---@field args? any|fun(): any[] Arguments to pass to component provider
+---@field hl? bartender.Highlight Override highlights to use instead of provider's
+---@field on_click? bartender.Highlight Override click handler to use instead of provider's
 
----@class component_spec
----@field [1]? string|component_provider if string then text that is displayed elseif nil then skip component else component provider
----@field args? table|fun(): table arguments to pass to component's callback
----@field highlight? string|table highlight group or attribute table component should take on; this takes precedence over the highlights in provider
+---@alias bartender.DynamicComponentProvider fun(): bartender.Component, bartender.Events? Function that provides the components and events to update on
 
--- SECTIONS
-----------------------------------------------------
----@class section_t
----@field components component_spec[] ordered list of components contained within section
+---@class bartender.ComponentGroup
+---@field [integer] bartender.Component
+---@field on_click? function Click handler to use for all components in the group
 
----@alias section_provider fun(): section_t, events function that provides the sections and events to update on
-
----@class section_spec
----@field [1] section_provider section provider
----@field args? table|fun(): table arguments to pass to section's callback
+---@alias bartender.Component bartender.StaticComponent|bartender.DynamicComponent|bartender.ComponentGroup
 
 -- BARS
 ----------------------------------------------------
----@alias bar_spec section_spec[] list of section specs defining bar
-
----@class config_t
----@field winbar { active: bar_spec?, inactive: bar_spec? }
----@field statusline { active: bar_spec?, inactive: bar_spec?, global: bar_spec? }
----@field tabline { global: bar_spec? }
----@field statuscolumn { active: bar_spec?, inactive: bar_spec? }
+---@class bartender.Config
+---@field winbar { active: bartender.ComponentGroup?, inactive: bartender.ComponentGroup? , disable: fun(): boolean}
+---@field statusline { active: bartender.ComponentGroup?, inactive: bartender.ComponentGroup?, global: bartender.ComponentGroup?, disable: fun(): boolean }
+---@field tabline { global: bartender.ComponentGroup?, disable: fun(): boolean }
+---@field statuscolumn { active: bartender.ComponentGroup?, inactive: bartender.ComponentGroup?, disable: fun(): boolean }
 
 -- CACHE
 ----------------------------------------------------
 -- TODO: fix this
----@class cache_t
----@field winbar { active: bar_spec?, inactive: bar_spec? }
----@field statusline { active: bar_spec?, inactive: bar_spec?, global: bar_spec? }
----@field tabline { global: bar_spec? }
+-- Cache only contains cached components
+-- How to create identifier?
+--  - can't use flat component index, because if a component group before the current updates and changes the number of components, it chances the index of our current component
+--  - ues combination of componentgroup index and component index
+
+---@alias bartender.BarCacheComponent { str: string, hl_group: string, click_fn: function, autocmd_id: integer}
+---@alias bartender.BarCache { [string]: bartender.BarCacheComponent }
+
+---@class bartender.Cache
+---@field winbar { active: bartender.BarCache?, inactive: bartender.BarCache? }
+---@field statusline { active: bartender.BarCache?, inactive: bartender.BarCache?, global: bartender.BarCache? }
+---@field tabline { global: bartender.BarCache? }

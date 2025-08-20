@@ -39,15 +39,16 @@ end
 
 --- Benchmark how long it takes to compute bar
 ---
----@param bar bar_t
----@param variant variant_t
+---@param bar bartender.Bar
+---@param variant bartender.BarVariant
 M.run = function(bar, variant)
-  if not bar or not variant then
-    vim.notify("bartender: must pass in a bar and variant to benchmark")
+  local component_group = require("bartender.config")[bar][variant]
+  if component_group == nil then
+    vim.notify("Bartender: Bar variant is not configured", vim.log.levels.ERROR, { title = "Bartender" })
     return
   end
   benchmark("milliseconds", 2, 1e4, function()
-    require("bartender.render").render(bar)
+    require("bartender.resolve").resolve_component_group(bar, "BartenderBenchmark", 1)
   end)
 end
 

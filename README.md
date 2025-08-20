@@ -1,52 +1,114 @@
 # 🍺 Bartender
 
-**bartender.nvim** is a plugin to help you manage your bars
+**bartender.nvim** is a plugin to help you manage your bars (winbar, statusline, tabline, statuscolumn).
+
+
+
+## Features
+
+- construct bars from **readable, extendable, composable components**
+- configure **different styles for focused and unfocused windows**
+- automatic highlight creation and reloading
+- cache components and **only update when necessary**
+- **live-reload configuration** during runtime
+- plugins can dynamically components to a bar through an API call, e.g. Neorg toggle concealer
+
+- only manage bars that are configured
+- no magic, doesn't change vim options like `'laststatus'`
+    - only a wrapper for `vim.o[bar]`
+
+
 
 ## Concept
 
-### Components
+Bartender views bars as a collection of components. A component defines the string of characters that get displayed, the highlights those characters should have, and a click handler to run when clicked.
 
-A component is an atomic piece of your statusline.
-
-#### Creating Components
-
-A component is simply a function that returns a table with the following keys:
-
-1. `text`: *string*
-
-    String that the component should display
-
-2. `highlight`: *string | table*
-
-    - if the type is a string, it will act as the highlight-group name that this
-      component will use for it's highlighting
-
-    - if the type is a table, it with the same form as what `nvim_set_hl()` takes.
-
-        If non-nil, a highlight group for `component.text` is created
-        with provided attributes. The name of this new highlight group
-        if prefixed with config's `highlight_prefix`.
-
-        If nil, a new highlight group is not defined.
-
-4. `click`: *function -> nil*
-
-    Function that is run when you click on the component
+There are three types of components: **static components**, **dynamic components**, and **component groups**.
 
 
-### Sections
+#### Static Component
 
-A section is a group of components. Sections exist for the following reasons:
+A **static component** is a table with the following fields:
 
-1. semantic grouping of components
-2. easily setting accent colors
-3. lazily changing components
+`[1]`: *string*
 
-`local section = {}`
+- String that the component displays. Any format items (`:h 'statusline'` for winbar, statusline, tabline and `:h 'statuscolumn'` for statuscolumn) can be used.
 
-## Usage
+`hl?`: *string | table | fun(): (string|table)*
+
+- Highlight information of the component.
+    - If string, it is the name of the highlight group that the component will be highlighted with. 
+    - If table, it will take the same form as what `nvim_set_hl()` takes. The `fg` attribute can take a special value `"transparent"`, which will make it the same color as the bg of the bar it is contained in. Any attribute in the table can be a function that returns a value for the attribute instead of a static value. In this case, the function will be called on every update to get the attribute value.
+    - If function, it will be called on every update and the return value will be used as the highlight.
+    - If nil, then the component will be styled with the default highlights of the bar it is contained in.
+
+`on_click?`: *function(int, int, string, string): -> nil*
+
+- Function that is run when you click on the component. See the "@" item in `:h 'statusline'` for documentation on the arguments passed in.
+
+<!-- TODO: Basic example -->
 
 
-> Sections and components are evaluated in the context of the window that the
-> bar belongs to at the time of evaluation. Bartender stores the window id of
-> the active window in `bartender.active_winid`.
+#### Dynamic Component
+
+A **dynamic component** uses a function to generate a component. This function is re-evaluated whenever we need to update the component. This allows for more power as opposed to simple static components:
+
+- component text, highlights, and/or click_handler can *change dynamically*
+- component can be *generic*, generating a different component depending on the provided arguments
+
+A dynamic component is a table with the following fields:
+
+`[1]`: *fun(): Component, Events?*
+
+- The function to call to generate the component. This is called a dynamic component provider.
+
+`args?`: *any[] | fun(): any[]*
+
+- The arguments to call the provider with. The arguments types depend on the parameters of the provider. If given as a function, it will be called on every update of the dynamic component, and the return value will be used as the arguments to pass to the provider.
+
+`hl?`: *string | table | fun(): (string|table)*
+
+- Highlights to use for the component, overriding the ones the provider generated. Takes the same form as a static compoenent's `hl` field.
+
+
+##### Provider
+
+A **dynamic component provider** is a function that dynamic components use to generate components. One provider can be used for multiple dynamic components, and can be called with different arguments from each dynamic component.
+
+###### Parameters
+
+Function can have any parameters dependent on the usecase.
+
+###### Return Values
+
+`component`: *Component*
+
+- Component that is generated
+
+`events?`: *string | (string|string[])[]*
+
+- Autocommand events in which to re-evaluate the function and update component. If string, it is the name of the event to update on. If table, it is a list of events or { event, pattern } pairs to update on. An empty table makes the component static (never updates). If nil, component updates on every redraw of the bar.
+
+<!-- TODO: Modified example -->
+
+
+#### Component Group
+
+A **component group** is a simply a list of other components.
+
+Component groups allow you to:
+
+- compose components to create higher level components
+- coordinate encapsulated components
+- semantically group components
+
+Since component groups are themselves a type of component, they can be contained in other component groups, nesting arbitrarily deeply. In fact, entire bars themselves, e.g. the statusline, is represented as a component group.
+
+<!-- TODO: Tabs example -->
+
+
+## Truncation
+
+Bartender has no native truncation. Truncation needs to be implemented for each component.
+
+## Configuration

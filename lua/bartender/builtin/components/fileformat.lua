@@ -1,6 +1,4 @@
-local utils = require("bartender.utils")
-local fileformat = {}
-
+--- Icon icon representing current buffer's fileformat
 
 local formats = {
   dos = "",
@@ -8,14 +6,9 @@ local formats = {
   mac = "",
 }
 
---- Icon showing if current buffer is has been fileformat
---
-function fileformat.provider()
-  local icon = formats[vim.o.fileformat]
+return function()
+  local icon = formats[vim.o.fileformat] or ""
   return {
-    text = icon,
-  }
+    icon,
+  }, { { "OptionSet", "fileformat" } }
 end
-
-
-return fileformat
