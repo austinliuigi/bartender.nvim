@@ -1,7 +1,9 @@
 local components = require("bartender.builtin.components")
 
-return {
-  { "" },
-  { " " },
-  { components.cwd },
-}
+return function()
+  return {
+    { "" },
+    { " " },
+    { components.cwd },
+  }, {}
+end

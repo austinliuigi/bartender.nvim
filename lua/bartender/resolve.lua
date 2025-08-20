@@ -64,9 +64,12 @@ end
 ---@return string
 local function resolve_static_component(component, bar, parent_name, nth_child)
   parent_name = parent_name or "Bartender"
-  nth_child = nth_child or 1
+  nth_child = nth_child or 0
 
-  local name = string.format("%s_%s", parent_name, nth_child)
+  local name = parent_name
+  if nth_child > 0 then
+    name = string.format("%s_%s", parent_name, nth_child)
+  end
 
   local component_str = component[1]
 
@@ -122,8 +125,12 @@ end
 ---@return string
 local function resolve_component_group(component_group, bar, parent_name, nth_child)
   parent_name = parent_name or "Bartender"
-  nth_child = nth_child or 1
-  local name = string.format("%s_%s", parent_name, nth_child)
+  nth_child = nth_child or 0
+
+  local name = parent_name
+  if nth_child > 0 then
+    name = string.format("%s_%s", parent_name, nth_child)
+  end
 
   local component_strings = {}
   for n, component in ipairs(component_group) do
@@ -143,11 +150,8 @@ end
 ---@param parent_name? string
 ---@param nth_child? integer
 ---@return string
-function M.resolve_component(component, bar, parent_name, nth_child, test)
+function M.resolve_component(component, bar, parent_name, nth_child)
   local t = component_type(component)
-  if test == true then
-    print(t, "foo")
-  end
   if t == "static" then
     ---@diagnostic disable-next-line: param-type-mismatch
     return resolve_static_component(component, bar, parent_name, nth_child)
@@ -155,6 +159,7 @@ function M.resolve_component(component, bar, parent_name, nth_child, test)
     ---@diagnostic disable-next-line: param-type-mismatch
     return resolve_dynamic_component(component, bar, parent_name, nth_child)
   else
+    ---@diagnostic disable-next-line: param-type-mismatch
     return resolve_component_group(component, bar, parent_name, nth_child)
   end
 end
