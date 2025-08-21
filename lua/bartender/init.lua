@@ -30,6 +30,9 @@ M.setup = function(cfg, base)
   local config = require("bartender.config")
   config.configure(cfg, base)
 
+  -- clear cache if it was previously filled
+  require("bartender.cache").clear()
+
   -- set vim options for configured bars
   for _, bar in ipairs(BARS) do
     local configure_bar = false

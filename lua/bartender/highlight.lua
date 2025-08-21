@@ -36,13 +36,15 @@ local function get_hl_attrs(hl_group)
   return vim.api.nvim_get_hl(0, { name = hl_group, link = false })
 end
 
---- Create highlight for component
+--- Create highlight group for component
 ---
----@param bar? bartender.Bar The bar to use for fallback highlights
 ---@param hl_group string Name to use for the created highlight group
+---@param bar? bartender.Bar The bar to use for fallback highlights
 ---@param hl bartender.Highlight Highlights to use for created group; highest priority last
----@return table attrs Attributes of created highlight group
-M.create_highlight = function(bar, hl_group, hl)
+---@return string
+M.create = function(hl_group, bar, hl)
+  hl = require("bartender.utils").eval_if_func(hl)
+
   local hl_attrs = {}
   if type(hl) == "string" then
     hl_attrs = vim.api.nvim_get_hl(0, { name = hl, link = false })
@@ -60,20 +62,6 @@ M.create_highlight = function(bar, hl_group, hl)
   end
 
   vim.api.nvim_set_hl(0, hl_group, attributes)
-  return attributes
-end
-
---- Get the highlight group name for a component
----
----@param bar? bartender.Bar
----@param component_name string
----@param hl bartender.Highlight
----@return string hl_group Name of highlight group for component
-M.get = function(bar, component_name, hl)
-  local hl_group = component_name
-  -- TODO: only create if necessary, i.e. when a component is updated or on colorscheme change
-  --   - for now, create highlight every time to ensure it's not using a stale
-  M.create_highlight(bar, hl_group, hl)
   return hl_group
 end
 

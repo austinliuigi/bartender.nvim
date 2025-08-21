@@ -5,7 +5,7 @@ return function()
 
   -- no lsp attached
   if #vim.lsp.get_clients({ bufnr = 0 }) == 0 then
-    icon = ""
+    icon = "󰦨" -- "⨯"
   -- lsp attached in single-file mode
   elseif #vim.lsp.buf.list_workspace_folders() == 0 then
     icon = ""
@@ -16,5 +16,5 @@ return function()
 
   return {
     icon,
-  }
+  }, { "LspAttach", "LspDetach" }
 end

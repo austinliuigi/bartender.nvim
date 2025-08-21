@@ -16,5 +16,5 @@ return function()
     hl = {
       fg = require("bartender.utils").hl_attr(icon_hl_group, "fg"),
     },
-  }, { "BufEnter" }
+  }, { "BufWinEnter" }
 end

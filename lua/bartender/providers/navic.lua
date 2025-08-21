@@ -17,6 +17,15 @@ local function strip_highlights(bar_str)
   return bar_str
 end
 
+--- Remove the click components from a bar format string
+--
+---@param bar_str string
+---@return string Stripped format string
+local function strip_clicks(bar_str)
+  bar_str, _ = bar_str:gsub("%%%X", ""):gsub("%%%T", ""):gsub("%%%d%@.-%@", "")
+  return bar_str
+end
+
 --- Find the nth match in a string; like string.find but allows targeting a specific match
 --
 ---@param str string
@@ -47,7 +56,7 @@ return function(ellipsis, max_chars)
   ellipsis = "%#NavicText#" .. ellipsis -- highlight ellipsis the same as other navic text
 
   local code_context = nvim_navic.get_location()
-  while vim.fn.strchars(strip_highlights(code_context)) > max_chars do
+  while vim.fn.strchars(strip_clicks(strip_highlights(code_context))) > max_chars do
     -- local next_section, _ = string.find(code_context, "%%%#NavicSeparator%#", string.len(ellipsis)+2)
     local next_section, _ = find_nth_match(code_context, "%%%#NavicSeparator%#", 2)
     if next_section ~= nil then
@@ -59,5 +68,5 @@ return function(ellipsis, max_chars)
 
   return {
     code_context,
-  }, { "CursorMoved" }
+  }, { "CursorMoved", "WinResized" }
 end

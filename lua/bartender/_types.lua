@@ -2,7 +2,7 @@
 ---@alias bartender.BarVariant "active"|"inactive"|"global"
 
 ---@alias bartender.Highlight string|table|fun(): string|table
----@alias bartender.Events string|(string|string[])[] Examples: "BufWrite" | {"BufWrite", "BufRead"} | { "BufWrite", { "OptionSet", "fileformat" } }
+---@alias bartender.Events string|(string|(string|string[])[])[] Examples: "BufWrite" | {"BufWrite", "BufRead"} | { "BufWrite", { "OptionSet", "fileformat" } | { "OptionSet", { "readonly", "modified" } } }
 
 -- COMPONENTS
 ----------------------------------------------------
@@ -35,16 +35,19 @@
 
 -- CACHE
 ----------------------------------------------------
--- TODO: fix this
--- Cache only contains cached components
--- How to create identifier?
---  - can't use flat component index, because if a component group before the current updates and changes the number of components, it chances the index of our current component
---  - ues combination of componentgroup index and component index
+---@class bartender.CachedStaticComponent
+---@field str string
+---@field hl_group? string
+---@field click_fn? function
 
----@alias bartender.BarCacheComponent { str: string, hl_group: string, click_fn: function, autocmd_id: integer}
----@alias bartender.BarCache { [string]: bartender.BarCacheComponent }
+---@class bartender.CachedDynamicComponent
+---@field evaled_component bartender.Component
+---@field evaled_component_name string
+---@field augroup_id? integer
+---@field update_on_redraw? boolean
 
----@class bartender.Cache
----@field winbar { active: bartender.BarCache?, inactive: bartender.BarCache? }
----@field statusline { active: bartender.BarCache?, inactive: bartender.BarCache?, global: bartender.BarCache? }
----@field tabline { global: bartender.BarCache? }
+---@class bartender.CachedComponentGroup
+---@field children string[]
+
+---@alias bartender.CachedComponent bartender.CachedStaticComponent|bartender.CachedDynamicComponent|bartender.CachedComponentGroup
+---@alias bartender.Cache { [string]: bartender.CachedComponent }

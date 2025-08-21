@@ -1,4 +1,4 @@
-local components = require("bartender.builtin.components")
+local providers = require("bartender.providers")
 local utils = require("bartender.utils")
 
 local function tab_component(tabpagenr)
@@ -6,18 +6,18 @@ local function tab_component(tabpagenr)
   if tabpagenr == vim.fn.tabpagenr() then
     sep_hl = utils.hl_attrs_wrap({ fg = { "TabLineSel", "bg" }, bg = { "TabLineFill", "bg" } })
     hl = "TabLineSel"
-    icon = "  "
+    icon = ""
   else
     sep_hl = utils.hl_attrs_wrap({ fg = { "TabLine", "bg" }, bg = { "TabLineFill", "bg" } })
     hl = "TabLine"
-    icon = "  "
+    icon = ""
   end
 
   return {
     { "", hl = sep_hl },
-    { icon .. tabpagenr .. " ", hl = hl },
+    { string.format(" %s %s ", icon, tabpagenr), hl = hl },
     {
-      components.filepath,
+      providers.filepath,
       args = function()
         return {
           vim.api.nvim_win_get_buf(vim.api.nvim_tabpage_get_win(vim.api.nvim_list_tabpages()[tabpagenr])),
@@ -47,5 +47,7 @@ return function()
     })
   end
 
-  return group, { "Tabnew", "TabClosed" }
+  return group
+  -- TODO: Uncomment when TabMoved autocmd exists
+  -- , { "TabNew", "TabClosed", "TabMoved" }
 end

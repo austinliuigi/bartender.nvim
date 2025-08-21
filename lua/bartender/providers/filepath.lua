@@ -23,5 +23,5 @@ return function(bufnr, modifier, max_chars)
 
   return {
     path,
-  }, { "BufEnter" }
+  }, { "BufWinEnter", "WinResized" }
 end

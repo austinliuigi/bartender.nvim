@@ -8,5 +8,5 @@ return function(icon)
     hl = {
       fg = require("bartender.utils").hl_attr_wrap("WarningMsg", "fg"),
     },
-  }
+  }, { { "OptionSet", "readonly" } }
 end

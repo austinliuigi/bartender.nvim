@@ -36,6 +36,35 @@ local function has_call_metamethod(tbl)
   return false
 end
 
+--- Create autocommands that clear a dynamic component and its evaluated component from the cache
+---
+---@param dynamic_component_cache_name string
+---@param events bartender.Events
+local function create_update_autocmds(dynamic_component_cache_name, events)
+  local function register(event, pattern)
+    vim.api.nvim_create_autocmd(event, {
+      group = dynamic_component_cache_name,
+      pattern = pattern,
+      callback = function()
+        require("bartender.cache").remove(dynamic_component_cache_name)
+        -- print(dynamic_component_cache_name)
+      end,
+    })
+  end
+
+  if type(events) == "string" then
+    register(events)
+  else
+    for _, event in ipairs(events) do
+      if type(event) == "string" then
+        register(event)
+      else
+        register(event[1], event[2])
+      end
+    end
+  end
+end
+
 --- Get the type of a component
 ---
 ---@param component bartender.Component
@@ -59,28 +88,40 @@ end
 ---
 ---@param component bartender.StaticComponent
 ---@param bar? bartender.Bar
----@param parent_name? string
----@param nth_child integer
+---@param name? string
 ---@return string
-local function resolve_static_component(component, bar, parent_name, nth_child)
-  parent_name = parent_name or "Bartender"
-  nth_child = nth_child or 0
-
-  local name = parent_name
-  if nth_child > 0 then
-    name = string.format("%s_%s", parent_name, nth_child)
-  end
+local function resolve_static_component(component, bar, name)
+  name = name or "Bartender"
 
   local component_str = component[1]
 
-  local hl = utils.eval_if_func(component.hl)
-  if hl ~= nil then
-    component_str = wrap_hl(component_str, require("bartender.highlight").get(bar, name, hl))
+  -- return cached component if exists
+  local current_cache_entry = require("bartender.cache").cache[name]
+  if current_cache_entry then
+    if type(component.hl) == "function" then
+      require("bartender.highlight").create(name, bar, component.hl)
+    end
+    return current_cache_entry.str
   end
 
-  if component.on_click ~= nil then
-    component_str = wrap_click(component_str, require("bartender.click").get(name, component.on_click))
+  -- create new cache entry
+  local cache_entry = {}
+  require("bartender.cache").cache[name] = cache_entry
+
+  -- handle highlight
+  if component.hl ~= nil then
+    local hl_group = require("bartender.highlight").create(name, bar, component.hl)
+    cache_entry.hl = hl_group
+    component_str = wrap_hl(component_str, hl_group)
   end
+
+  -- handle click
+  if component.on_click ~= nil then
+    cache_entry.click_fn = component.on_click
+    component_str = wrap_click(component_str, string.format("v:lua.require'bartender.cache'.cache.%s.click_fn", name))
+  end
+
+  cache_entry.str = component_str
   return component_str
 end
 
@@ -88,20 +129,41 @@ end
 ---
 ---@param component bartender.DynamicComponent
 ---@param bar? bartender.Bar
----@param parent_name? string
----@param nth_child integer
+---@param name? string
 ---@return string
-local function resolve_dynamic_component(component, bar, parent_name, nth_child)
-  parent_name = parent_name or "Bartender"
-  nth_child = nth_child or 1
+local function resolve_dynamic_component(component, bar, name)
+  name = name or "Bartender"
 
-  -- if cached then
-  --   use_cache
-  -- else
-  --   create autocmd to check cache
-  -- end
+  local cache_name = name
+  local evaled_component_name = string.format("%s%s", name, "d") -- "d" to signify that it is derived from a function
 
-  local evaled_component = component[1](unpack(utils.eval_if_func(component.args or {})))
+  -- use cached component if exists
+  local current_cache_entry = require("bartender.cache").cache[cache_name]
+  if current_cache_entry then
+    if current_cache_entry.update_on_redraw then
+      require("bartender.cache").remove(cache_name)
+    else
+      return M.resolve_component(current_cache_entry.evaled_component, bar, evaled_component_name)
+    end
+  end
+
+  -- create new cache entry
+  ---@type bartender.CachedDynamicComponent
+  ---@diagnostic disable-next-line: missing-fields
+  local cache_entry = {}
+  require("bartender.cache").cache[cache_name] = cache_entry
+
+  -- evaluate and cache resulting component
+  local evaled_component, update_events = component[1](unpack(utils.eval_if_func(component.args or {})))
+  cache_entry.evaled_component = evaled_component
+  cache_entry.evaled_component_name = evaled_component_name
+
+  if update_events then
+    cache_entry.augroup_id = vim.api.nvim_create_augroup(cache_name, { clear = true })
+    create_update_autocmds(cache_name, update_events)
+  else
+    cache_entry.update_on_redraw = true
+  end
 
   -- highlight override
   if component.hl ~= nil then
@@ -113,54 +175,57 @@ local function resolve_dynamic_component(component, bar, parent_name, nth_child)
     evaled_component.on_click = component.on_click
   end
 
-  return M.resolve_component(evaled_component, bar, parent_name, nth_child)
+  local component_str = M.resolve_component(evaled_component, bar, evaled_component_name)
+
+  return component_str
 end
 
 --- Resolve the option string for a component group
 ---
 ---@param component_group bartender.ComponentGroup
 ---@param bar? bartender.Bar
----@param parent_name? string
----@param nth_child? integer
+---@param name? string
 ---@return string
-local function resolve_component_group(component_group, bar, parent_name, nth_child)
-  parent_name = parent_name or "Bartender"
-  nth_child = nth_child or 0
+local function resolve_component_group(component_group, bar, name)
+  name = name or "Bartender"
 
-  local name = parent_name
-  if nth_child > 0 then
-    name = string.format("%s_%s", parent_name, nth_child)
-  end
+  local cache_entry = {}
+  require("bartender.cache").cache[name] = cache_entry
 
-  local component_strings = {}
+  local component_strs = {}
+  local children_names = {}
   for n, component in ipairs(component_group) do
+    -- on_click override
     if component_group.on_click ~= nil then
-      -- on_click override
       component.on_click = component_group.on_click
     end
-    table.insert(component_strings, M.resolve_component(component, bar, name, n))
+
+    local child_name = string.format("%s_%s", name, n)
+    table.insert(children_names, child_name)
+    table.insert(component_strs, M.resolve_component(component, bar, child_name))
   end
-  return table.concat(component_strings)
+
+  cache_entry.children = children_names
+  return table.concat(component_strs)
 end
 
 --- Resolve the option string for a component or component group
 ---
 ---@param component bartender.Component|bartender.ComponentGroup
 ---@param bar? bartender.Bar
----@param parent_name? string
----@param nth_child? integer
+---@param name? string
 ---@return string
-function M.resolve_component(component, bar, parent_name, nth_child)
+function M.resolve_component(component, bar, name)
   local t = component_type(component)
   if t == "static" then
     ---@diagnostic disable-next-line: param-type-mismatch
-    return resolve_static_component(component, bar, parent_name, nth_child)
+    return resolve_static_component(component, bar, name)
   elseif t == "dynamic" then
     ---@diagnostic disable-next-line: param-type-mismatch
-    return resolve_dynamic_component(component, bar, parent_name, nth_child)
+    return resolve_dynamic_component(component, bar, name)
   else
     ---@diagnostic disable-next-line: param-type-mismatch
-    return resolve_component_group(component, bar, parent_name, nth_child)
+    return resolve_component_group(component, bar, name)
   end
 end
 
@@ -181,6 +246,13 @@ function M.resolve_bar(bar)
     local current_win = vim.api.nvim_get_current_win()
     variant = (require("bartender").active_winid == current_win) and "active" or "inactive"
     name = string.format("Bartender%sW%s", capitalize(bar), current_win)
+    vim.api.nvim_create_augroup(name, { clear = true })
+    vim.api.nvim_create_autocmd({ "VimEnter", "WinEnter" }, {
+      group = name,
+      callback = function()
+        require("bartender.cache").remove(name)
+      end,
+    })
   else
     variant = "global"
     name = string.format("Bartender%s", capitalize(bar))
@@ -188,7 +260,7 @@ function M.resolve_bar(bar)
 
   local variant_config = bar_config[variant]
 
-  return resolve_component_group(variant_config, bar, name)
+  return M.resolve_component(variant_config, bar, name)
 end
 
 return M
