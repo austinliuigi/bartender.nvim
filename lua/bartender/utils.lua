@@ -5,7 +5,7 @@ local M = {}
 ---@param bar bartender.Bar
 ---@return boolean is_local
 function M.is_bar_local(bar)
-  if bar == "winbar" or (bar == "statusline" and vim.o.laststatus ~= 3) then
+  if bar == "winbar" or bar == "statuscolumn" or (bar == "statusline" and vim.o.laststatus ~= 3) then
     return true
   end
   return false

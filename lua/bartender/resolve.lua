@@ -40,14 +40,21 @@ end
 ---
 ---@param dynamic_component_cache_name string
 ---@param events bartender.Events
-local function create_update_autocmds(dynamic_component_cache_name, events)
+---@param bar bartender.Bar?
+local function create_update_autocmds(dynamic_component_cache_name, events, bar)
   local function register(event, pattern)
     vim.api.nvim_create_autocmd(event, {
       group = dynamic_component_cache_name,
       pattern = pattern,
       callback = function()
         require("bartender.cache").remove(dynamic_component_cache_name)
-        -- print(dynamic_component_cache_name)
+        -- if bar then
+        --   vim.api.nvim__redraw({ [bar] = true })
+        -- end
+        -- HACK: work around lazy redrawing of statuscolumn
+        if bar == "statuscolumn" then
+          vim.api.nvim__redraw({ flush = true })
+        end
       end,
     })
   end
@@ -160,7 +167,7 @@ local function resolve_dynamic_component(component, bar, name)
 
   if update_events then
     cache_entry.augroup_id = vim.api.nvim_create_augroup(cache_name, { clear = true })
-    create_update_autocmds(cache_name, update_events)
+    create_update_autocmds(cache_name, update_events, bar)
   else
     cache_entry.update_on_redraw = true
   end
@@ -246,13 +253,9 @@ function M.resolve_bar(bar)
     local current_win = vim.api.nvim_get_current_win()
     variant = (require("bartender").active_winid == current_win) and "active" or "inactive"
     name = string.format("Bartender%sW%s", capitalize(bar), current_win)
-    vim.api.nvim_create_augroup(name, { clear = true })
-    vim.api.nvim_create_autocmd({ "VimEnter", "WinEnter" }, {
-      group = name,
-      callback = function()
-        require("bartender.cache").remove(name)
-      end,
-    })
+    if bar == "statuscolumn" then
+      name = string.format("%sL%sV%s", name, vim.v.lnum, vim.v.virtnum)
+    end
   else
     variant = "global"
     name = string.format("Bartender%s", capitalize(bar))
