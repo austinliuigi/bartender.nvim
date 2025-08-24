@@ -16,9 +16,135 @@ ffi.cdef([[
 ]])
 local error = ffi.new("Error")
 
+---@class foldinfo_T
+---@field start integer
+---@field level integer
+---@field llevel integer
+---@field lines integer
+
+-- HACK
+-- Create an artificial CursorHold event
+--   - https://github.com/neovim/neovim/issues/21533#issuecomment-1368070250
+local TIMEOUT = 150
+local timer = vim.loop.new_timer()
+vim.on_key(function()
+  timer:start(TIMEOUT, 0, function()
+    vim.schedule(function()
+      vim.api.nvim__redraw({ statuscolumn = true })
+    end)
+  end)
+end)
+
+--==================================================================================================
+-- Utils
+--==================================================================================================
+
+local function get_effective_foldlevel(win, lnum, foldinfo)
+  if foldinfo.lines == 0 then -- if fold is open
+    return foldinfo.level
+  end
+  return ffi.C.fold_info(win, lnum + foldinfo.lines - 1).level - 1 -- one less than the foldlevel of the last line in the closed fold
+end
+
+local function get_effective_after_foldinfo(win, lnum, foldinfo)
+  if foldinfo.lines == 0 then
+    return ffi.C.fold_info(win, lnum + 1)
+  end
+  return ffi.C.fold_info(win, lnum + foldinfo.lines)
+end
+
+--- Get the end type of a fold
+---
+--- @return integer 0 means line does not end a fold of the given level, 1 means line ends a fold of the given level, 2 means line ends a fold of a given level and is the last end for that level
+local function get_end_type(win, level, level_start_foldinfo, after_foldinfo)
+  if
+    level > after_foldinfo.level
+    or (level == after_foldinfo.level and after_foldinfo.start > level_start_foldinfo.start)
+  then
+    if level == level_start_foldinfo.llevel then
+      return 2
+    end
+    return 1
+  end
+  return 0
+end
+
+--- Get the foldinfo of the fold with the given level that contains the given line
+---
+---@param win win_T window to target
+---@param foldinfo foldinfo_T foldinfo of the line in question
+---@param level integer level of fold that contains the line in question
+---@return foldinfo_T|boolean
+local function get_level_start_foldinfo(win, foldinfo, level)
+  if level > foldinfo.level then
+    return false
+  end
+  local start_foldinfo = ffi.C.fold_info(win, foldinfo.start)
+  if start_foldinfo.level == level or start_foldinfo.llevel == level then
+    return start_foldinfo
+  end
+  return get_level_start_foldinfo(win, ffi.C.fold_info(win, foldinfo.start - 1), level)
+end
+
+--- Get the icon for a line corresponding to a specific foldlevel
+---   - git graph drawing characters available in terminals that support it:
+---     - https://github.com/kovidgoyal/kitty/pull/7681
+---     -                                            
+---
+---@param win win_T window to target
+---@param lnum integer line number of the line in question
+---@param foldinfo foldinfo_T foldinfo of the line in question
+---@param after_foldinfo foldinfo_T foldinfo of the line in question
+---@param level integer level of fold that contains the line in question
+---@return string
+local function get_level_icon(win, lnum, foldinfo, after_foldinfo, level)
+  local level_start_foldinfo = get_level_start_foldinfo(win, foldinfo, level)
+  local is_closed = level_start_foldinfo.lines > 0
+    and get_effective_foldlevel(win, level_start_foldinfo.start, level_start_foldinfo) < level
+  local end_type = get_end_type(win, level, level_start_foldinfo, after_foldinfo)
+
+  local icon
+  if vim.v.virtnum == 0 then
+    if level_start_foldinfo.level == 0 then
+      icon = " "
+    elseif is_closed then
+      icon = ""
+    elseif level_start_foldinfo.start == lnum then
+      icon = ""
+    elseif end_type ~= 0 then
+      icon = "╰"
+      -- icon = end_type == 2 and "╰" or ""
+    else -- in a fold, but not at start or end
+      icon = "│"
+    end
+  else
+    icon = (end_type == 2 and after_foldinfo.level == 0) and " " or "│"
+  end
+  return icon
+end
+
+local function add_fold_debug_info(icons, foldinfo, lnum, win)
+  table.insert(
+    icons,
+    " "
+      .. foldinfo.start
+      .. " "
+      .. foldinfo.level
+      .. " "
+      .. foldinfo.llevel
+      .. " "
+      .. get_effective_foldlevel(win, lnum, foldinfo)
+      .. " - "
+  )
+end
+
+--==================================================================================================
+-- Range functions
+--==================================================================================================
+
 --- Check if line is in the range of the current fold or its nested folds
 ---
-local function in_descendant_range(foldinfo, cursor_foldinfo, win)
+local function in_descendant_range(win, foldinfo, cursor_foldinfo)
   if foldinfo.start == cursor_foldinfo.start then
     return true
   elseif foldinfo.level < cursor_foldinfo.level then
@@ -30,60 +156,36 @@ local function in_descendant_range(foldinfo, cursor_foldinfo, win)
   return in_descendant_range(ffi.C.fold_info(win, foldinfo.start - 1), cursor_foldinfo, win)
 end
 
-local function get_effective_foldlevel(foldinfo, win, lnum)
-  if foldinfo.lines == 0 then -- if fold is open
-    return foldinfo.level
-  end
-  return ffi.C.fold_info(win, lnum + foldinfo.lines - 1).level - 1 -- one less than the foldlevel of the last line in the closed fold
-end
-
-local function get_effective_foldstart(foldinfo, win)
-  if foldinfo.lines == 0 then -- if fold is open
-    return foldinfo.start
-  end
-  return ffi.C.fold_info(win, foldinfo.start - 1).start
-end
-
---- Check if line is in the range that will be hidden when fold containing cursorline is closed
+--- Check if line is in the range that will be hidden when fold containing cursorline is closed via `zc`
 ---
-local function in_closefold_range(foldinfo, cursor_foldinfo, win, lnum)
-  local effective_foldlevel = get_effective_foldlevel(foldinfo, win, lnum)
-  local cursor_effective_foldlevel = get_effective_foldlevel(cursor_foldinfo, win, vim.fn.line("."))
-
-  if cursor_effective_foldlevel == 0 then
+local function in_closefold_range(win, lnum, foldinfo, cursor_foldinfo)
+  local cursor_effective_foldlevel = get_effective_foldlevel(win, vim.fn.line("."), cursor_foldinfo)
+  local effective_foldlevel = get_effective_foldlevel(win, lnum, foldinfo)
+  if (effective_foldlevel == 0) or (cursor_effective_foldlevel == 0) then
     return false
   end
 
-  local effective_start = get_effective_foldstart(foldinfo, win)
-  local cursor_effective_start = get_effective_foldstart(cursor_foldinfo, win)
+  local effective_start = get_level_start_foldinfo(win, foldinfo, effective_foldlevel).start
+  local cursor_effective_start = get_level_start_foldinfo(win, cursor_foldinfo, cursor_effective_foldlevel).start
 
-  -- any line that has the same foldstart as the cursor, with a greater or equal foldlevel will be folded by a zc
-  if
-    (
-      effective_start == cursor_effective_start
-      or effective_start == cursor_foldinfo.start
-      or foldinfo.start == cursor_foldinfo.start
-
-    ) and effective_foldlevel >= cursor_effective_foldlevel
-  then
+  -- any line that has the same start as the cursor, with a greater or equal foldlevel will be folded
+  if effective_start == cursor_effective_start and effective_foldlevel >= cursor_effective_foldlevel then
     return true
-  -- any fold before cursor's effective start logically can't be in range
-  elseif foldinfo.start < cursor_foldinfo.start then
+  -- any line with a foldstart before cursor's logically can't be in range
+  elseif foldinfo.start < cursor_effective_start then
     return false
-  -- any fold after cursor's effect start that have a lower effective foldlevel can't be in range
+  -- any line with a foldstart after cursor's that has a lower or equal foldlevel can't be in range
   elseif effective_foldlevel <= cursor_effective_foldlevel then
     return false
   end
 
-  -- if in a line in which fold starts after cursor's
-  return in_closefold_range(ffi.C.fold_info(win, foldinfo.start - 1), cursor_foldinfo, win, lnum)
+  -- any line with a foldstart after cursor's that has greater foldlevel is only in range if its parent is in range
+  return in_closefold_range(win, lnum, ffi.C.fold_info(win, foldinfo.start - 1), cursor_foldinfo)
 end
 
---- Check if an line that ends a fold is the last (most nested)
-local function is_last_end(foldinfo, win)
-  local foldinfo_start = ffi.C.fold_info(win, foldinfo.start)
-  return foldinfo.llevel == foldinfo_start.llevel
-end
+--==================================================================================================
+-- Component
+--==================================================================================================
 
 local function on_click(minwid, clicks, button, mods)
   local mousepos = vim.fn.getmousepos() -- screen position of last mouse click
@@ -95,62 +197,61 @@ local function on_click(minwid, clicks, button, mods)
   end
 end
 
--- Git graph drawing characters available in terminals that support it:
---   - https://github.com/kovidgoyal/kitty/pull/7681
---   -                                            
-return function()
-  local icon
-  local hl
+---@param max_width integer Maximum width that the folds will take up. Any level higher than the max width will be flattened.
+return function(max_width)
+  max_width = max_width or 1
 
-  local lnum = vim.v.lnum
+  if max_width <= 0 then
+    return { "" }
+  end
+
   local win = ffi.C.find_window_by_handle(vim.api.nvim_get_current_win(), error)
+  local lnum = vim.v.lnum
   local foldinfo = ffi.C.fold_info(win, lnum)
-  local foldinfo_after = ffi.C.fold_info(win, lnum + 1)
-  local start = foldinfo.start
-  local is_closed = foldinfo.lines > 0
-  local is_end = foldinfo.level > foldinfo_after.level
-    or (foldinfo_after.start > foldinfo.start and foldinfo.level == foldinfo_after.level)
 
-  local cursor_foldinfo = ffi.C.fold_info(win, vim.fn.line("."))
-
-  if in_closefold_range(foldinfo, cursor_foldinfo, win, lnum) then
-    hl = "CursorLineNr"
+  if foldinfo.level == 0 then
+    return { "" }
   end
 
-  if vim.v.virtnum == 0 then
-    if foldinfo.level == 0 then
-      icon = " "
-    elseif is_closed then
-      icon = ""
-    elseif start == lnum then
-      icon = ""
-    elseif is_end then
-      if is_last_end(foldinfo, win) then
-        icon = "╰"
-      else
-        icon = "│" -- ""
-      end
-    else -- in a fold, but not at start or end
-      icon = "│"
-    end
-  else
-    if is_end and foldinfo_after.level == 0 then
-      icon = " "
-    else
-      icon = "│"
+  local cursor_lnum = vim.fn.line(".")
+  local after_foldinfo = get_effective_after_foldinfo(win, lnum, foldinfo)
+  local cursor_foldinfo = ffi.C.fold_info(win, cursor_lnum)
+
+  local icons = {}
+
+  -- Insert icons before current foldlevel
+  for level = 1, math.min(max_width, foldinfo.level) - 1 do
+    table.insert(icons, get_level_icon(win, lnum, foldinfo, after_foldinfo, level))
+  end
+
+  -- Insert icon for current foldlevel
+  table.insert(icons, get_level_icon(win, lnum, foldinfo, after_foldinfo, foldinfo.level))
+
+  -- Highlight fold that cursor is in
+  if in_closefold_range(win, lnum, foldinfo, cursor_foldinfo) then
+    local cursor_level = math.min(max_width, get_effective_foldlevel(win, cursor_lnum, cursor_foldinfo))
+    if cursor_level > 0 then
+      icons[cursor_level] = "%#CursorLineNr#" .. icons[cursor_level] .. "%#LineNr#"
     end
   end
 
-  -- icon = icon
-  --   .. " "
-  --   .. foldinfo.start
-  --   .. " "
-  --   .. get_effective_foldlevel(foldinfo, win, lnum)
-  --   .. " - "
+  -- TODO
+  -- The click handler each column is determined by the click handler set for the first line of that column
+  -- Therefore, if the first column only contains one icon, the click handler will apply only to the columns that
+  -- contains that column, even if other lines have more columns and have a click handler set for them
+  -- if lnum == 1 then
+  --   table.insert(icons, string.rep(" ", fold_width - #icons))
+  -- end
 
+  -- add_fold_debug_info(icons, foldinfo, lnum, win)
+  local str = string.format(
+    "%s%s%s",
+    (lnum == cursor_lnum) and "%#LineNr#" or "", -- force LineNr highlight on cursorline, which has a default highlight, %*, of CursorLineNr
+    table.concat(icons),
+    "%*"
+  )
   return {
-    icon,
-    hl = hl,
+    str,
     on_click = on_click,
-  }, { "CursorMoved", "TextChanged", "InsertLeave" }
+  } --, { "CursorMoved", "TextChanged", "InsertLeave" }
 end

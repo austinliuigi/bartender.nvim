@@ -47,13 +47,14 @@ local function create_update_autocmds(dynamic_component_cache_name, events, bar)
       group = dynamic_component_cache_name,
       pattern = pattern,
       callback = function()
-        require("bartender.cache").remove(dynamic_component_cache_name)
-        -- if bar then
-        --   vim.api.nvim__redraw({ [bar] = true })
-        -- end
-        -- HACK: work around lazy redrawing of statuscolumn
+        -- special case: since statuscolumn only has one autocmd per window, but each line has a
+        --  cache entry, we need to remove all of the line's entries for the component in this autocmd
         if bar == "statuscolumn" then
-          vim.api.nvim__redraw({ flush = true })
+          -- all cache entries of the descendants and derivatives of the dynamic component are captured by this pattern
+          local pat = dynamic_component_cache_name:gsub("L1V0", "L%%d+V%%d+")
+          require("bartender.cache").clear(pat)
+        else
+          require("bartender.cache").remove(dynamic_component_cache_name)
         end
       end,
     })
@@ -166,8 +167,12 @@ local function resolve_dynamic_component(component, bar, name)
   cache_entry.evaled_component_name = evaled_component_name
 
   if update_events then
-    cache_entry.augroup_id = vim.api.nvim_create_augroup(cache_name, { clear = true })
-    create_update_autocmds(cache_name, update_events, bar)
+    -- for statuscolumn, only create update autocmd for each window, otherwise each *line* of each
+    -- window would create an autocmd
+    if bar ~= "statuscolumn" or name:match("L1V0") then
+      cache_entry.augroup_id = vim.api.nvim_create_augroup(cache_name, { clear = true })
+      create_update_autocmds(cache_name, update_events, bar)
+    end
   else
     cache_entry.update_on_redraw = true
   end
