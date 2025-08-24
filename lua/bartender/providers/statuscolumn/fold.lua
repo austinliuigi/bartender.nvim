@@ -13,6 +13,7 @@ ffi.cdef([[
   } foldinfo_T;
   foldinfo_T fold_info(win_T* wp, int lnum);
   win_T *find_window_by_handle(int Window, Error *err);
+  int getDeepestNesting(win_T* wp);
 ]])
 local error = ffi.new("Error")
 
@@ -235,13 +236,15 @@ return function(max_width)
     end
   end
 
-  -- TODO
-  -- The click handler each column is determined by the click handler set for the first line of that column
-  -- Therefore, if the first column only contains one icon, the click handler will apply only to the columns that
-  -- contains that column, even if other lines have more columns and have a click handler set for them
-  -- if lnum == 1 then
-  --   table.insert(icons, string.rep(" ", fold_width - #icons))
-  -- end
+  -- HACK
+  -- The click handler of each column is determined by the click handler set for the first line of that column
+  -- Therefore, if the first column only contains one icon, the click handler will apply only to the column that
+  -- contains that icon, even if other lines have more columns and have a click handler set for them.
+  -- Thus, we padd the first line with spaces to fill width that the folds take up, in order for the click
+  -- handler to apply to all icons in all rows.
+  if lnum == 1 then
+    table.insert(icons, string.rep(" ", math.min(max_width, ffi.C.getDeepestNesting(win)) - #icons))
+  end
 
   -- add_fold_debug_info(icons, foldinfo, lnum, win)
   local str = string.format(
