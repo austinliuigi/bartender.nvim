@@ -26,12 +26,13 @@ local error = ffi.new("Error")
 -- HACK
 -- Create an artificial CursorHold event
 --   - https://github.com/neovim/neovim/issues/21533#issuecomment-1368070250
-local TIMEOUT = 150
+local TIMEOUT = 350
 local timer = vim.loop.new_timer()
 vim.on_key(function()
   timer:start(TIMEOUT, 0, function()
     vim.schedule(function()
-      vim.api.nvim__redraw({ statuscolumn = true })
+      vim.cmd("redraw!")
+      -- vim.api.nvim__redraw({ statuscolumn = true })
     end)
   end)
 end)
@@ -181,7 +182,7 @@ local function in_closefold_range(win, lnum, foldinfo, cursor_foldinfo)
   end
 
   -- any line with a foldstart after cursor's that has greater foldlevel is only in range if its parent is in range
-  return in_closefold_range(win, lnum, ffi.C.fold_info(win, foldinfo.start - 1), cursor_foldinfo)
+  return in_closefold_range(win, foldinfo.start - 1, ffi.C.fold_info(win, foldinfo.start - 1), cursor_foldinfo)
 end
 
 --==================================================================================================
@@ -210,7 +211,7 @@ return function(max_width)
   local lnum = vim.v.lnum
   local foldinfo = ffi.C.fold_info(win, lnum)
 
-  if foldinfo.level == 0 then
+  if foldinfo.level == 0 and lnum ~= 1 then -- special case: line 1 can't early return since it sets the click handler for all columns
     return { "" }
   end
 
