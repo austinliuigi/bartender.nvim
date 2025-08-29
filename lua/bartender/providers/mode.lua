@@ -135,7 +135,8 @@ local M = {
 }
 
 M.current_mode_hl = function()
-  return utils.eval_if_func(M.mode_to_component[modespec_to_mode[vim.api.nvim_get_mode().mode]].hl)
+  -- return utils.eval_if_func(M.mode_to_component[modespec_to_mode[vim.api.nvim_get_mode().mode]].hl)
+  return utils.get_effective_hl_attrs(M.mode_to_component[modespec_to_mode[vim.api.nvim_get_mode().mode]].hl)
 end
 
 setmetatable(M, {

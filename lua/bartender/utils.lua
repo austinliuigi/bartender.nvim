@@ -12,7 +12,7 @@ function M.is_bar_local(bar)
 end
 
 --- Evaluate if argument is a function, otherwise just return what was passed in
---
+---
 ---@param arg any
 function M.eval_if_func(arg)
   if type(arg) == "function" then
@@ -21,18 +21,43 @@ function M.eval_if_func(arg)
   return arg
 end
 
---- Get effective highlight attribute of a specified group
---
----@param hl_group string Highlight group name
----@param attr string Attribute to target
----@return string|nil attr Value if attribute exists for hl_group else nil
-function M.hl_attr(hl_group, attr)
-  local attrs = vim.api.nvim_get_hl(0, { name = hl_group, link = false })
+--- Get effective highlight attributes of highlight
+---
+---@param hl bartender.Highlight
+---@return table
+function M.get_effective_hl_attrs(hl)
+  local attrs = M.eval_if_func(hl)
+  if type(hl) == "string" then
+    attrs = vim.api.nvim_get_hl(0, { name = hl, link = false })
+  end
+
+  -- neovim inherits from Normal hl-group if fg or bg of a highlight is nil
+  attrs.fg = attrs.fg or vim.api.nvim_get_hl(0, {
+    name = "Normal",
+    link = false,
+  })["fg"]
+  attrs.bg = attrs.bg or vim.api.nvim_get_hl(0, {
+    name = "Normal",
+    link = false,
+  })["bg"]
+
   if attrs.reverse then
+    attrs.reverse = nil -- unset reverse since we are doing it manually
+
     local prev_fg = attrs.fg
     attrs.fg = attrs.bg
     attrs.bg = prev_fg
   end
+  return attrs
+end
+
+--- Get effective highlight attribute of a specified group
+---
+---@param hl_group string Highlight group name
+---@param attr string Attribute to target
+---@return string|nil attr Value if attribute exists for hl_group else nil
+function M.hl_attr(hl_group, attr)
+  local attrs = M.get_effective_hl_attrs(hl_group)
   local val = attrs[attr]
   if val ~= nil then
     return string.format("#%06x", val)
