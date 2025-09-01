@@ -36,6 +36,7 @@ end
 
 return function()
   local group = {
+    -- { "    ", hl = utils.hl_attrs_wrap({ fg = { "Normal", "bg" }, bg = { "Special", "fg" } }) },
     { "    ", hl = utils.hl_attrs_wrap({ fg = { "Normal", "bg" }, bg = { "Special", "fg" } }) },
     { "", hl = "Special" },
   }

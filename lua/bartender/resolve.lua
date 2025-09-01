@@ -216,9 +216,15 @@ local function resolve_component_group(component_group, bar, name)
     table.insert(children_names, child_name)
     table.insert(component_strs, M.resolve_component(component, bar, child_name))
   end
-
   cache_entry.children = children_names
-  return table.concat(component_strs)
+
+  -- NOTE: We store the string in the cache entry only for inspection purposes
+  --   - we don't use it to early return on future invocations because we need to recurse all
+  --     children in case any need to be updated
+  local component_str = table.concat(component_strs)
+  cache_entry.str = component_str
+
+  return component_str
 end
 
 --- Resolve the option string for a component or component group

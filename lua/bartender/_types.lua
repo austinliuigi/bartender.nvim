@@ -47,6 +47,7 @@
 ---@field update_on_redraw? boolean
 
 ---@class bartender.CachedComponentGroup
+---@field str string
 ---@field children string[]
 
 ---@alias bartender.CachedComponent bartender.CachedStaticComponent|bartender.CachedDynamicComponent|bartender.CachedComponentGroup

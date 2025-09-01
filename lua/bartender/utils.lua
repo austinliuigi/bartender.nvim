@@ -88,4 +88,26 @@ function M.hl_attrs_wrap(specs)
   end
 end
 
+---@param basename string
+---@param start? integer
+---@param stop? integer
+function M.get_cached_component_width(basename, start, stop)
+  start = start or 1
+  stop = stop or start
+
+  local width = 0
+  for i = start, stop do
+    local cache_entry = require("bartender.cache").cache[string.format("%s_%s", basename, i)]
+    if cache_entry == nil then
+      goto continue
+    elseif cache_entry.str == nil then
+      -- if cached component is that of a dynamic component, use the cached derivation instead
+      cache_entry = require("bartender.cache").cache[cache_entry.evaled_component_name]
+    end
+    width = width + vim.api.nvim_eval_statusline(cache_entry.str, {}).width
+    ::continue::
+  end
+  return width
+end
+
 return M
