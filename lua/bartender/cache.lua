@@ -63,4 +63,12 @@ vim.api.nvim_create_autocmd({ "VimEnter", "WinEnter" }, {
   end,
 })
 
+--- Clear cache after colorscheme changes to ensure updated reference colors are used
+--
+vim.api.nvim_create_autocmd({ "ColorScheme" }, {
+  callback = function()
+    M.clear()
+  end,
+})
+
 return M
