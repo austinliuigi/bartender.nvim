@@ -2,12 +2,6 @@
 ---   - requires nvim-navic to be installed
 ---   - requires nvim-navic to be attached to the lsp server
 
-local nvim_navic_ok, nvim_navic = pcall(require, "nvim-navic")
-if not nvim_navic_ok then
-  vim.notify("bartender: unable to load nvim-navic", vim.log.levels.ERROR)
-  return nil
-end
-
 --- Remove the highlight components from a bar format string
 --
 ---@param bar_str string
@@ -47,6 +41,8 @@ local function find_nth_match(str, pattern, n)
   return prev_start, prev_end
 end
 
+local no_navic_notified = false
+
 ---@param ellipsis string String that should show if truncated, e.g. ".."
 ---@param max_chars integer Max number of chars that component should take up; truncation occurs until it fits
 return function(ellipsis, max_chars)
@@ -54,6 +50,16 @@ return function(ellipsis, max_chars)
 
   ellipsis = ellipsis or ".."
   ellipsis = "%#NavicText#" .. ellipsis -- highlight ellipsis the same as other navic text
+
+  local nvim_navic_ok, nvim_navic = pcall(require, "nvim-navic")
+  if not nvim_navic_ok then
+    if not no_navic_notified then
+      vim.notify("bartender: unable to load nvim-navic", vim.log.levels.ERROR)
+    end
+    return {
+      "",
+    }, { "CursorMoved", "WinResized" }
+  end
 
   local code_context = nvim_navic.get_location()
   while vim.fn.strchars(strip_clicks(strip_highlights(code_context))) > max_chars do
