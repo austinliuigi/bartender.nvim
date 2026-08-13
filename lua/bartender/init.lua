@@ -47,12 +47,16 @@ M.setup = function(cfg, base)
 
     if configure_bar then
       vim.o[bar] = "%{%v:lua.require('bartender.resolve').resolve_bar('" .. bar .. "')%}"
+
       if bar == "statuscolumn" then
         vim.api.nvim_create_autocmd({ "WinEnter", "WinLeave" }, {
           callback = function()
-            vim.o[bar] = "%{%v:lua.require('bartender.resolve').resolve_bar('" .. bar .. "')%}"
+            -- only do this for bartender managed statuscolumns (leave manually overriden statuscolumns alone)
+            if vim.o[bar] == "%{%v:lua.require('bartender.resolve').resolve_bar('" .. bar .. "')%}" then
+              vim.o[bar] = "%{%v:lua.require('bartender.resolve').resolve_bar('" .. bar .. "')%}"
+            end
           end,
-          desc = "Re-set statuscolumn when changing windows so width of the evaluated format string is not preserved",
+          desc = "HACK: Re-set statuscolumn when changing windows so width of the evaluated format string is not preserved",
         })
       end
     else
