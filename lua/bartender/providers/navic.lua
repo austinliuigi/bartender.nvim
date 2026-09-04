@@ -54,7 +54,9 @@ return function(ellipsis, max_chars)
   local nvim_navic_ok, nvim_navic = pcall(require, "nvim-navic")
   if not nvim_navic_ok then
     if not no_navic_notified then
-      vim.notify("bartender: unable to load nvim-navic", vim.log.levels.ERROR)
+      vim.schedule(function()
+        vim.notify("bartender: unable to load nvim-navic", vim.log.levels.ERROR)
+      end)
     end
     return {
       "",
