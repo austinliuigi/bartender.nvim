@@ -248,12 +248,7 @@ return function(max_width)
   end
 
   -- add_fold_debug_info(icons, foldinfo, lnum, win)
-  local str = string.format(
-    "%s%s%s",
-    (lnum == cursor_lnum) and "%#LineNr#" or "", -- force LineNr highlight on cursorline, which has a default highlight, %*, of CursorLineNr
-    table.concat(icons),
-    "%*"
-  )
+  local str = string.format("%s%s%s", "%#LineNr#", table.concat(icons), "%*")
   return {
     str,
     on_click = on_click,
