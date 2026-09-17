@@ -233,7 +233,7 @@ return function(max_width)
   if in_closefold_range(win, lnum, foldinfo, cursor_foldinfo) then
     local cursor_level = math.min(max_width, get_effective_foldlevel(win, cursor_lnum, cursor_foldinfo))
     if cursor_level > 0 then
-      icons[cursor_level] = "%#CursorLineNr#" .. icons[cursor_level] .. "%#LineNr#"
+      icons[cursor_level] = "%#Directory#" .. icons[cursor_level] .. "%#LineNr#"
     end
   end
 
